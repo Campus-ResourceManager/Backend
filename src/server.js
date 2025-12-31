@@ -1,10 +1,18 @@
 require("dotenv").config();
+const session = require('express-session')
 const authRoutes = require("./routes/auth.js")
 const express = require("express");
 const app = express();
 const port = process.env.PORT;
 
+
 app.use(express.json());
+app.use(session({
+    secret : 'keyboardCat',
+    resave: false,
+    saveUninitialized : true,
+    cookie: { secure: false }
+}))
 app.use("/api/auth", authRoutes);
 
 app.get('/', (req, res) => {
