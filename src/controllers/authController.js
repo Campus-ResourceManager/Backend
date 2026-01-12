@@ -14,16 +14,19 @@ const loginUser = (req, res) => {
     }
 }
 
+const logoutUser = (req, res) => {
+    req.session.destroy();
+    res.status(200).json({
+        message : "User successfully logged out"
+    })
+};
+
 const getMe = (req, res) => {
-    if (!req.session.user) {
-        return res.status(401).json({
-            message : "Not logged in"
-        })
-    }
     res.status(200).json(req.session.user)
 };
 
 module.exports = {
     loginUser,
+    logoutUser,
     getMe
 };
