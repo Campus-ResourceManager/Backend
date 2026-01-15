@@ -8,7 +8,7 @@ const requireRole = (allowedRoles) => {
             });
         }
 
-         next(); // role allowed
+        next(); // role allowed
     }
 }
 

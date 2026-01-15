@@ -1,4 +1,46 @@
 const User = require("../models/user");
+const bcrypt = require("bcrypt");
+
+const registerUser = async (req, res) => {
+    try { 
+        const {username, password , role } = req.body;
+        if (!username || !password || !role ) {
+            return res.status(400).json({
+                message : "UserName, password and role. Everthing is required"
+            })
+        }
+        const existingUser = await User.findOne({ username });
+        if (existingUser) {
+            return res.status(400).json({
+                message : "User already exists"
+            });
+        }
+        
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const user =await User.create({
+            username, 
+            password: hashedPassword,
+            role,
+            status: "active"
+        })
+        
+        res.status(201).json({
+            message : "User Registered successsfully",
+            user : {
+                id : user._id,
+                username : user.username,
+                role : user.role,
+                status : user.status
+            }
+        });
+    } catch(err) {
+        console.log(err);
+        res.status(500).json({
+            message : "server error"
+        })
+    }
+};
 
 const loginUser = async (req, res) => { 
     try {
@@ -41,7 +83,7 @@ const loginUser = async (req, res) => {
         message: "Server error"
         });
     }
-}
+} 
 
 const logoutUser = (req, res) => {
     req.session.destroy();
@@ -55,6 +97,7 @@ const getMe = (req, res) => {
 };
 
 module.exports = {
+    registerUser,
     loginUser,
     logoutUser,
     getMe
