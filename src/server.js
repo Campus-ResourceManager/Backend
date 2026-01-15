@@ -2,6 +2,8 @@ require("dotenv").config();
 const session = require('express-session')
 const authRoutes = require("./routes/auth.js")
 const express = require("express");
+const mongoose = require("mongoose");
+
 const app = express();
 const port = process.env.PORT;
 
@@ -19,10 +21,13 @@ app.get('/', (req, res) => {
     res.send('backend running');
 })
 
-app.listen(port, (err) => {
-    if (err) {
-        console.log("error while starting the server");
-    } else {
-        console.log("Server has been started at ",port);
-    }
+mongoose.connect(process.env.MONGO_URI)
+.then(() => {
+    console.log("Mongo DB connected");
+    app.listen(port, () => {
+        console.log("server running at port", port);
+    });
+})
+.catch((err) => {
+    console.error("Mongo DB connection failed", err);
 });
