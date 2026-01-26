@@ -65,7 +65,9 @@ const loginUser = async (req, res) => {
             });
         }
 
-        if (user.password !== password) {
+        const isMatch = await bcrypt.compare(password, user.password);
+
+        if (!isMatch) {
             return res.status(401).json({
                 message: "Invalid credentials"
             });
@@ -76,7 +78,16 @@ const loginUser = async (req, res) => {
             role: user.role,
             status: user.status
         }
-        res.status(200).send({message: "Login Successful"})
+        
+        res.status(200).json({
+            success: true,
+            user: {
+                id: user._id,
+                username: user.username,
+                role: user.role,
+                status: user.status
+            }
+        });
     }  catch (err) {
         console.error(err);
         res.status(500).json({
