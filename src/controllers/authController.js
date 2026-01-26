@@ -90,13 +90,15 @@ const loginUser = async (req, res) => {
             status: user.status
         };
 
-        res.status(200).json({
-            message: "Login successful",
-            user: {
-                username: user.username,
-                role: user.role
-            }
-        });
+      res.status(200).json({
+        success: true,
+        message: "Login successful",
+        user: {
+          username: user.username,
+          role: user.role
+        }
+      });
+
 
     } catch (err) {
         console.error(err);
@@ -217,6 +219,43 @@ const removeAdmin = async (req, res) => {
   });
 };
 
+const getCoordinators = async (req, res) => {
+  const coordinators = await User.find({
+    role: "coordinator"
+  }).select("-password");
+
+  res.status(200).json(coordinators);
+};
+
+const deleteCoordinator = async (req, res) => {
+  const { id } = req.params;
+
+  const coordinator = await User.findOneAndDelete({
+    _id: id,
+    role: "coordinator"
+  });
+
+  if (!coordinator) {
+    return res.status(404).json({
+      message: "Coordinator not found"
+    });
+  }
+
+  res.status(200).json({
+    message: "Coordinator deleted successfully"
+  });
+};
+
+const getActiveAdmins = async (req, res) => {
+  const admins = await User.find({
+    role: "admin",
+    status: "active"
+  }).select("-password");
+
+  res.status(200).json(admins);
+};
+
+
 module.exports = {
     registerUser,
     loginUser,
@@ -226,6 +265,9 @@ module.exports = {
     approveAdmin,
     rejectAdmin,
     disableAdmin,
-    removeAdmin
+    removeAdmin,
+    getCoordinators,
+    deleteCoordinator,
+    getActiveAdmins
 };
 

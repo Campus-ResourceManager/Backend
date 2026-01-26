@@ -4,9 +4,16 @@ const authRoutes = require("./routes/auth.js")
 const express = require("express")
 const mongoose = require("mongoose")
 const app = express()
-
+const cors = require("cors")
 const port = process.env.PORT
-
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
+  })
+);
 app.use(express.json())
 app.use(session({
     secret : 'keyboardCat',
