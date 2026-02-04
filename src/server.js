@@ -23,7 +23,12 @@ app.use(
     secret: "keyboardCat",
     resave: false,
     saveUninitialized: true,
-    cookie: { secure: false }
+    cookie: {
+      httpOnly: true,
+      secure: false,        
+      sameSite: "lax",
+      maxAge: 1000 * 60 * 60 * 24   
+    }
   })
 );
 
