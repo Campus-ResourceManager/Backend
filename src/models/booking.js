@@ -50,7 +50,21 @@ const bookingSchema = new mongoose.Schema(
     rejectionReason: {
       type: String,
       default: ""
+    },
+    isConflict: {
+      type: Boolean,
+      default: false
+    },
+    conflictReason: {
+      type: String,
+      default: ""
+    },
+    overriddenBooking: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Booking",
+      default: null
     }
+
   },
   {
     timestamps: true

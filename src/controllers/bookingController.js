@@ -36,7 +36,9 @@ const createBooking = async (req, res) => {
       hall,
       date, // e.g. "2025-02-01"
       startTime, // e.g. "10:00"
-      endTime // e.g. "12:00"
+      endTime, // e.g. "12:00"
+      overrideRequested,   // boolean
+      conflictReason       // string
     } = req.body;
 
     if (!facultyName || !eventTitle || !hall || !date || !startTime || !endTime) {
@@ -70,13 +72,18 @@ const createBooking = async (req, res) => {
       });
     }
 
-    const conflict = await hasConflictForHall(hall, startDateTime, endDateTime);
+    const conflictBooking = await Booking.findOne({
+      hall,
+      status: "approved",
+      startTime: { $lt: endDateTime },
+      endTime: { $gt: startDateTime }
+    });
 
-    if (conflict) {
+    if (conflictBooking && !overrideRequested) {
       return res.status(409).json({
         success: false,
-        status: "rejected",
-        message: "Selected hall is not available for the chosen date and time"
+        conflict: true,
+        message: "Hall already booked. Do you want to request override?"
       });
     }
 
@@ -90,8 +97,12 @@ const createBooking = async (req, res) => {
       hall,
       startTime: startDateTime,
       endTime: endDateTime,
-      status: "pending"
+      status: "pending",
+      isConflict: Boolean(conflictBooking),
+      conflictReason: conflictBooking ? conflictReason : "",
+      overriddenBooking: conflictBooking ? conflictBooking._id : null
     });
+
 
     return res.status(201).json({
       success: true,
@@ -197,21 +208,33 @@ const approveBooking = async (req, res) => {
       return res.status(400).json({ message: "Booking is already approved" });
     }
 
-    // Ensure hall is still available for this time window
-    // Exclude current booking from conflict check
-    const conflict = await hasConflictForHall(
-      booking.hall,
-      booking.startTime,
-      booking.endTime,
-      booking._id
-    );
+    // Only check conflict for NON-override bookings
+    if (!booking.isConflict) {
+      const conflict = await hasConflictForHall(
+        booking.hall,
+        booking.startTime,
+        booking.endTime,
+        booking._id
+      );
 
-    if (conflict) {
-      return res.status(409).json({
-        success: false,
-        status: "rejected",
-        message: "Hall is no longer available for this time slot"
-      });
+      if (conflict) {
+        return res.status(409).json({
+          success: false,
+          status: "rejected",
+          message: "Hall is no longer available for this time slot"
+        });
+      }
+    }
+
+    // If this is an override booking → reject old one
+    if (booking.isConflict && booking.overriddenBooking) {
+      await Booking.findByIdAndUpdate(
+        booking.overriddenBooking,
+        {
+          status: "rejected",
+          rejectionReason: "Overridden by admin approval"
+        }
+      );
     }
 
     booking.status = "approved";
@@ -221,9 +244,10 @@ const approveBooking = async (req, res) => {
     return res.status(200).json({
       success: true,
       status: booking.status,
-      message: "Booking approved successfully",
+      message: "Booking approved successfully (override applied)",
       booking
     });
+
   } catch (error) {
     console.error(error);
     return res.status(500).json({
