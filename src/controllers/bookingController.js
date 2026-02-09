@@ -30,6 +30,7 @@ const createBooking = async (req, res) => {
     const {
       facultyName,
       facultyDepartment,
+      facultyDesignation,
       facultyEmail,
       eventTitle,
       eventDescription,
@@ -91,6 +92,7 @@ const createBooking = async (req, res) => {
       coordinator: req.session.user.userId,
       facultyName,
       facultyDepartment,
+      facultyDesignation,
       facultyEmail,
       eventTitle,
       eventDescription,
@@ -144,7 +146,7 @@ const getAvailability = async (req, res) => {
     const bookings = await Booking.find({
       status: { $in: ["pending", "approved"] }
     })
-      .select("hall startTime endTime status eventTitle facultyName")
+      .select("hall startTime endTime status eventTitle facultyName facultyDesignation facultyEmail")
       .sort({ startTime: 1 })
       .lean();
 
@@ -162,6 +164,7 @@ const getAvailability = async (req, res) => {
 const getPendingBookings = async (req, res) => {
   try {
     const bookings = await Booking.find({ status: "pending" })
+      .select("facultyName facultyDesignation facultyEmail facultyEmail eventTitle hall startTime endTime isConflict overriddenBooking")
       .populate("coordinator", "username role")
       .sort({ createdAt: -1 })
       .lean();
@@ -180,6 +183,7 @@ const getPendingBookings = async (req, res) => {
 const getAllBookings = async (req, res) => {
   try {
     const bookings = await Booking.find()
+      .select("facultyName facultyDesignation facultyDepartment facultyEmail eventTitle hall startTime endTime isConflict overriddenBooking eventDescription")
       .populate("coordinator", "username role")
       .sort({ createdAt: -1 })
       .lean();

@@ -16,6 +16,9 @@ const bookingSchema = new mongoose.Schema(
       type: String,
       trim: true
     },
+    facultyDesignation: {
+      type: String,
+      trim: true },
     facultyEmail: {
       type: String,
       trim: true
