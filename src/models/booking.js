@@ -29,6 +29,26 @@ const bookingSchema = new mongoose.Schema(
       type: String,
       trim: true
     },
+    eventCategory: {
+      type: String,
+      enum: ["Institutional", "Departmental", "Student", "Other"],
+      default: "Student",
+      required: true
+    },
+    expectedAttendance: {
+      type: Number,
+      default: 0
+    },
+    priorityScore: {
+      type: Number,
+      default: 0
+    },
+    priorityDetails: {
+      categoryScore: Number,
+      advanceBookingScore: Number,
+      attendanceScore: Number,
+      totalScore: Number
+    },
     hall: {
       type: String,
       required: true,
@@ -63,8 +83,15 @@ const bookingSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Booking",
       default: null
-    }
-
+    },
+    suggestedAlternatives: [
+      {
+        hall: String,
+        startTime: Date,
+        endTime: Date,
+        reason: String
+      }
+    ]
   },
   {
     timestamps: true

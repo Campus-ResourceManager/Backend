@@ -1,10 +1,10 @@
 const express = require("express");
-const { registerUser, 
-        loginUser, 
+const { registerUser,
+        loginUser,
         logoutUser,
-        getMe, 
+        getMe,
         getPendingAdmins,
-        approveAdmin, 
+        approveAdmin,
         rejectAdmin,
         disableAdmin,
         removeAdmin,
@@ -22,7 +22,7 @@ router.post("/login", loginUser);
 router.post("/admin/request", registerUser);
 router.post("/register", requireAuth, requireRole("admin"), registerUser);
 router.post("/logout", requireAuth, logoutUser);
-router.get("/me", requireAuth, getMe);
+router.get("/me", getMe);
 router.get("/coordinators", requireAuth, requireRole("admin"), getCoordinators);
 router.delete("/coordinator/:id", requireAuth, requireRole("admin"), deleteCoordinator);
 router.get("/admin/active", requireAuth, requireRole("admin"), getActiveAdmins);

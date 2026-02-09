@@ -15,7 +15,7 @@ const registerUser = async (req, res) => {
     if (existingUser) {
       return res.status(400).json({
         message: "User already exists"
-      });   
+      });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -47,85 +47,92 @@ const registerUser = async (req, res) => {
 };
 
 
-const loginUser = async (req, res) => { 
-    try {
-        const { username, password, role } = req.body;
+const loginUser = async (req, res) => {
+  try {
+    const { username, password, role } = req.body;
 
-        if (!username || !password || !role) {
-            return res.status(400).json({
-                message: "Username, password and role are required"
-            });
-        }
-
-        const user = await User.findOne({ username });
-
-        if (!user) {
-            return res.status(401).json({
-                message: "Invalid credentials"
-            });
-        }
-
-        if (user.role !== role) {
-            return res.status(401).json({
-                message: `Invalid role. Your account role is ${user.role}`
-            });
-        }
-
-        if (user.status !== "active") {
-            return res.status(403).json({
-                message: "User account is disabled"
-            });
-        }
-
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            return res.status(401).json({
-                message: "Invalid credentials"
-            });
-        }
-
-        req.session.user = {
-            userId: user._id,
-            role: user.role,
-            status: user.status
-        };
-
-      res.status(200).json({
-        success: true,
-        message: "Login successful",
-        user: {
-          username: user.username,
-          role: user.role
-        }
+    if (!username || !password || !role) {
+      return res.status(400).json({
+        message: "Username, password and role are required"
       });
-
-
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: "Server error" });
     }
+
+    const user = await User.findOne({ username });
+
+    if (!user) {
+      return res.status(401).json({
+        message: "Invalid credentials"
+      });
+    }
+
+    if (user.role !== role) {
+      return res.status(401).json({
+        message: `Invalid role. Your account role is ${user.role}`
+      });
+    }
+
+    if (user.status !== "active") {
+      return res.status(403).json({
+        message: "User account is disabled"
+      });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({
+        message: "Invalid credentials"
+      });
+    }
+
+    req.session.user = {
+      userId: user._id,
+      role: user.role,
+      status: user.status,
+      username: user.username
+    };
+
+    res.status(200).json({
+      success: true,
+      message: "Login successful",
+      user: {
+        username: user.username,
+        role: user.role
+      }
+    });
+
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
 };
 
 const logoutUser = (req, res) => {
-    req.session.destroy();
-    res.status(200).json({
-        message: "User successfully logged out"
-    });
+  req.session.destroy();
+  res.status(200).json({
+    message: "User successfully logged out"
+  });
 };
 
 const getMe = (req, res) => {
-  if (req.session.user) {
-    return res.status(200).json({
-      success: true,
-      user: {
-        userId: req.session.user.userId,
-        role: req.session.user.role,
-        status: req.session.user.status,
-        username: req.session.user.username
-      }
-    });
-  } else {
-    return res.status(200).json({ success: false, user: null });
+  try {
+    console.log("getMe called. Session user:", req.session?.user);
+    if (req.session && req.session.user) {
+      return res.status(200).json({
+        success: true,
+        user: {
+          userId: req.session.user.userId,
+          role: req.session.user.role,
+          status: req.session.user.status,
+          username: req.session.user.username
+        }
+      });
+    } else {
+      return res.status(200).json({ success: false, user: null });
+    }
+  } catch (error) {
+    console.error("getMe Error:", error);
+    return res.status(500).json({ message: "Server error in getMe" });
   }
 };
 
@@ -257,17 +264,17 @@ const getActiveAdmins = async (req, res) => {
 
 
 module.exports = {
-    registerUser,
-    loginUser,
-    logoutUser,
-    getMe,
-    getPendingAdmins,
-    approveAdmin,
-    rejectAdmin,
-    disableAdmin,
-    removeAdmin,
-    getCoordinators,
-    deleteCoordinator,
-    getActiveAdmins
+  registerUser,
+  loginUser,
+  logoutUser,
+  getMe,
+  getPendingAdmins,
+  approveAdmin,
+  rejectAdmin,
+  disableAdmin,
+  removeAdmin,
+  getCoordinators,
+  deleteCoordinator,
+  getActiveAdmins
 };
 

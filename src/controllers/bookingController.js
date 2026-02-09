@@ -1,4 +1,7 @@
 const Booking = require("../models/booking");
+const { calculatePriorityScore, compareBookings } = require("../utils/prioritySystem");
+const { findAlternativeSlots } = require("../utils/slotSuggestion");
+const ApprovalLog = require("../models/approvalLog");
 
 // Helper to check overlapping bookings for a hall
 // excludeBookingId: optional ID to exclude from conflict check (useful when approving existing booking)
@@ -7,7 +10,6 @@ const hasConflictForHall = async (hall, startTime, endTime, excludeBookingId = n
     hall,
     status: { $in: ["pending", "approved"] },
     $or: [
-      // Existing starts before new end and ends after new start => overlap
       {
         startTime: { $lt: endTime },
         endTime: { $gt: startTime }
@@ -15,16 +17,14 @@ const hasConflictForHall = async (hall, startTime, endTime, excludeBookingId = n
     ]
   };
 
-  // Exclude current booking from conflict check
   if (excludeBookingId) {
     query._id = { $ne: excludeBookingId };
   }
 
-  return Booking.exists(query);
+  return Booking.findOne(query).sort({ priorityScore: -1 }); // Get the highest priority conflicting booking
 };
 
 // POST /api/bookings
-// Coordinator creates a booking request with faculty + event details
 const createBooking = async (req, res) => {
   try {
     const {
@@ -33,18 +33,19 @@ const createBooking = async (req, res) => {
       facultyEmail,
       eventTitle,
       eventDescription,
+      eventCategory = "Student", // Default
+      expectedAttendance = 0,
       hall,
-      date, // e.g. "2025-02-01"
-      startTime, // e.g. "10:00"
-      endTime, // e.g. "12:00"
-      overrideRequested,   // boolean
-      conflictReason       // string
+      date,
+      startTime,
+      endTime,
+      overrideRequested,
+      conflictReason
     } = req.body;
 
     if (!facultyName || !eventTitle || !hall || !date || !startTime || !endTime) {
       return res.status(400).json({
-        message:
-          "facultyName, eventTitle, hall, date, startTime and endTime are required"
+        message: "Required fields: facultyName, eventTitle, hall, date, startTime, endTime"
       });
     }
 
@@ -52,41 +53,59 @@ const createBooking = async (req, res) => {
     const endDateTime = new Date(`${date}T${endTime}`);
 
     if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
-      return res.status(400).json({
-        message: "Invalid date or time format"
-      });
+      return res.status(400).json({ message: "Invalid date or time format" });
     }
 
     if (endDateTime <= startDateTime) {
-      return res.status(400).json({
-        message: "End time must be after start time"
-      });
+      return res.status(400).json({ message: "End time must be after start time" });
     }
 
-    // Check if the time slot is in the past
     const now = new Date();
-    if (startDateTime < now && endDateTime < now) {
-      return res.status(400).json({
-        success: false,
-        message: "Cannot create booking for a time slot that has already passed"
-      });
+    if (startDateTime < now) {
+      return res.status(400).json({ message: "Cannot book past time slots" });
     }
 
-    const conflictBooking = await Booking.findOne({
-      hall,
-      status: "approved",
-      startTime: { $lt: endDateTime },
-      endTime: { $gt: startDateTime }
-    });
+    // 1. Calculate Priority Score
+    const { totalScore, details } = calculatePriorityScore(
+      eventCategory,
+      new Date(), // booking date (now)
+      startDateTime,
+      expectedAttendance
+    );
+
+    // 2. Check for Conflicts
+    const conflictBooking = await hasConflictForHall(hall, startDateTime, endDateTime);
 
     if (conflictBooking && !overrideRequested) {
+      // Generate Priority Comparison
+      const priorityAnalysis = compareBookings(
+        { priorityScore: totalScore },
+        { priorityScore: conflictBooking.priorityScore }
+      );
+
+      // Find Alternatives
+      const alternatives = await findAlternativeSlots(hall, date, startTime, endTime);
+
       return res.status(409).json({
         success: false,
         conflict: true,
-        message: "Hall already booked. Do you want to request override?"
+        message: "Hall already booked during this time.",
+        conflictDetails: {
+          existingBooking: {
+            eventTitle: conflictBooking.eventTitle,
+            category: conflictBooking.eventCategory,
+            priorityScore: conflictBooking.priorityScore
+          },
+          newBooking: {
+            priorityScore: totalScore
+          },
+          analysis: priorityAnalysis
+        },
+        alternatives
       });
     }
 
+    // 3. Create Booking (Pending)
     const booking = await Booking.create({
       coordinator: req.session.user.userId,
       facultyName,
@@ -94,6 +113,10 @@ const createBooking = async (req, res) => {
       facultyEmail,
       eventTitle,
       eventDescription,
+      eventCategory,
+      expectedAttendance,
+      priorityScore: totalScore,
+      priorityDetails: details,
       hall,
       startTime: startDateTime,
       endTime: endDateTime,
@@ -103,18 +126,16 @@ const createBooking = async (req, res) => {
       overriddenBooking: conflictBooking ? conflictBooking._id : null
     });
 
-
     return res.status(201).json({
       success: true,
       status: booking.status,
-      message: "Booking request submitted and is pending admin approval",
+      message: "Booking request submitted successfully",
       booking
     });
+
   } catch (error) {
     console.error(error);
-    return res.status(500).json({
-      message: "Server error"
-    });
+    return res.status(500).json({ message: "Server error" });
   }
 };
 
@@ -197,6 +218,7 @@ const getAllBookings = async (req, res) => {
 const approveBooking = async (req, res) => {
   try {
     const { id } = req.params;
+    const { remarks } = req.body;
 
     const booking = await Booking.findById(id);
 
@@ -207,6 +229,8 @@ const approveBooking = async (req, res) => {
     if (booking.status === "approved") {
       return res.status(400).json({ message: "Booking is already approved" });
     }
+
+    const previousStatus = booking.status;
 
     // Only check conflict for NON-override bookings
     if (!booking.isConflict) {
@@ -228,23 +252,54 @@ const approveBooking = async (req, res) => {
 
     // If this is an override booking → reject old one
     if (booking.isConflict && booking.overriddenBooking) {
-      await Booking.findByIdAndUpdate(
+      const oldBooking = await Booking.findByIdAndUpdate(
         booking.overriddenBooking,
         {
           status: "rejected",
-          rejectionReason: "Overridden by admin approval"
+          rejectionReason: "Overridden by higher priority event"
         }
       );
+
+      // Log rejection of old booking
+      if (oldBooking) {
+        await ApprovalLog.create({
+          booking: oldBooking._id,
+          action: "Rejected",
+          performedBy: req.session.user.userId,
+          previousStatus: "approved",
+          newStatus: "rejected",
+          remarks: "System Auto-Rejection: Overridden by priority booking",
+          snapshot: {
+            priorityScore: oldBooking.priorityScore,
+            eventCategory: oldBooking.eventCategory
+          }
+        });
+      }
     }
 
     booking.status = "approved";
     booking.rejectionReason = "";
     await booking.save();
 
+    // Log Approval
+    await ApprovalLog.create({
+      booking: booking._id,
+      action: "Approved",
+      performedBy: req.session.user.userId,
+      previousStatus,
+      newStatus: "approved",
+      remarks: remarks || "Approved by Admin",
+      snapshot: {
+        priorityScore: booking.priorityScore,
+        eventCategory: booking.eventCategory,
+        conflictDetails: booking.priorityDetails
+      }
+    });
+
     return res.status(200).json({
       success: true,
       status: booking.status,
-      message: "Booking approved successfully (override applied)",
+      message: "Booking approved successfully",
       booking
     });
 
@@ -262,18 +317,31 @@ const rejectBooking = async (req, res) => {
     const { id } = req.params;
     const { reason } = req.body;
 
-    const booking = await Booking.findByIdAndUpdate(
-      id,
-      {
-        status: "rejected",
-        rejectionReason: reason || ""
-      },
-      { new: true }
-    );
+    const booking = await Booking.findById(id);
 
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
     }
+
+    const previousStatus = booking.status;
+
+    booking.status = "rejected";
+    booking.rejectionReason = reason || "";
+    await booking.save();
+
+    // Log Rejection
+    await ApprovalLog.create({
+      booking: booking._id,
+      action: "Rejected",
+      performedBy: req.session.user.userId,
+      previousStatus,
+      newStatus: "rejected",
+      remarks: reason || "Rejected by Admin",
+      snapshot: {
+        priorityScore: booking.priorityScore,
+        eventCategory: booking.eventCategory
+      }
+    });
 
     return res.status(200).json({
       success: true,
@@ -289,6 +357,21 @@ const rejectBooking = async (req, res) => {
   }
 };
 
+// GET /api/bookings/:id/logs
+const getBookingLogs = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const logs = await ApprovalLog.find({ booking: id })
+      .populate("performedBy", "username role")
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json(logs);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
 module.exports = {
   createBooking,
   getMyBookings,
@@ -296,6 +379,7 @@ module.exports = {
   getPendingBookings,
   getAllBookings,
   approveBooking,
-  rejectBooking
+  rejectBooking,
+  getBookingLogs
 };
 
