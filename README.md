@@ -14,7 +14,6 @@ By providing a centralized database and business logic, it ensures:
 
 ## 👥 Authors
 
-| Author Name |
 | :--- |
 | Aravind R K |
 | Kanishka D |
@@ -148,3 +147,4 @@ src/
 ## 📄 License
 
 This project is licensed under the ISC License.
+
