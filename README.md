@@ -12,16 +12,6 @@ By providing a centralized database and business logic, it ensures:
 -   **Secure Data Management**: Protected access to sensitive campus data through session-based authentication.
 -   **Transparency**: Real-time updates for all stakeholders on booking statuses and facility availability.
 
-## 👥 Authors
-
-| Author Name |
-| :--- |
-| Aravind R K |
-| Kanishka D |
-| Sandheep G S |
-| Radha Krishna |
-| Sujith Kumar A |
-
 ## 🚀 Features
 
 -   **User Authentication**: Secure login/logout and session management using `express-session`.
@@ -145,6 +135,13 @@ src/
 ### Hall
 - `code`, `block`, `floor`, `roomNumber`, `capacity`
 
-## 📄 License
+## 👥 Authors
 
-This project is licensed under the ISC License.
+| Author Name |
+| :--- |
+| Aravind R K |
+| Kanishka D |
+| Sandheep G S |
+| Radha Krishna |
+| Sujith Kumar A |
+
