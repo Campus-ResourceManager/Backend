@@ -35,6 +35,7 @@ const createBooking = async (req, res) => {
       eventTitle,
       eventDescription,
       hall,
+      capacity,
       date, // e.g. "2025-02-01"
       startTime, // e.g. "10:00"
       endTime, // e.g. "12:00"
@@ -88,6 +89,13 @@ const createBooking = async (req, res) => {
       });
     }
 
+    if (!capacity || capacity < 1 || capacity > 300) {
+  return res.status(400).json({
+    message: "Capacity must be between 1 and 300"
+  });
+}
+
+
     const booking = await Booking.create({
       coordinator: req.session.user.userId,
       facultyName,
@@ -97,6 +105,7 @@ const createBooking = async (req, res) => {
       eventTitle,
       eventDescription,
       hall,
+      capacity: parseInt(capacity),
       startTime: startDateTime,
       endTime: endDateTime,
       status: "pending",
@@ -146,7 +155,7 @@ const getAvailability = async (req, res) => {
     const bookings = await Booking.find({
       status: { $in: ["pending", "approved"] }
     })
-      .select("hall startTime endTime status eventTitle facultyName facultyDesignation facultyEmail")
+      .select("hall capacity startTime endTime status eventTitle facultyName facultyDesignation facultyEmail")
       .sort({ startTime: 1 })
       .lean();
 
@@ -164,7 +173,7 @@ const getAvailability = async (req, res) => {
 const getPendingBookings = async (req, res) => {
   try {
     const bookings = await Booking.find({ status: "pending" })
-      .select("facultyName facultyDesignation facultyEmail facultyEmail eventTitle hall startTime endTime isConflict overriddenBooking")
+      .select("facultyName facultyDepartment facultyDesignation facultyEmail eventTitle eventDescription hall capacity startTime endTime isConflict overriddenBooking status")
       .populate("coordinator", "username role")
       .sort({ createdAt: -1 })
       .lean();
@@ -183,7 +192,7 @@ const getPendingBookings = async (req, res) => {
 const getAllBookings = async (req, res) => {
   try {
     const bookings = await Booking.find()
-      .select("facultyName facultyDesignation facultyDepartment facultyEmail eventTitle hall startTime endTime isConflict overriddenBooking eventDescription")
+      .select("facultyName facultyDepartment facultyDesignation facultyEmail eventTitle eventDescription hall capacity startTime endTime isConflict overriddenBooking status")
       .populate("coordinator", "username role")
       .sort({ createdAt: -1 })
       .lean();

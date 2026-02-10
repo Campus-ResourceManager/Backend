@@ -35,7 +35,13 @@ const bookingSchema = new mongoose.Schema(
     hall: {
       type: String,
       required: true,
-      trim: true
+    },
+    capacity: {
+      type: Number,
+      required: true,
+      trim: true,
+      min: 1,
+      max: 300
     },
     startTime: {
       type: Date,
