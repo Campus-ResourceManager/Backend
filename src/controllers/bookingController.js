@@ -173,7 +173,7 @@ const getAvailability = async (req, res) => {
 const getPendingBookings = async (req, res) => {
   try {
     const bookings = await Booking.find({ status: "pending" })
-      .select("facultyName facultyDepartment facultyDesignation facultyEmail eventTitle eventDescription hall capacity startTime endTime isConflict overriddenBooking status")
+      .select("facultyName facultyDepartment facultyDesignation facultyEmail eventTitle eventDescription hall capacity startTime endTime isConflict conflictReason overriddenBooking status")
       .populate("coordinator", "username role")
       .sort({ createdAt: -1 })
       .lean();
@@ -192,7 +192,7 @@ const getPendingBookings = async (req, res) => {
 const getAllBookings = async (req, res) => {
   try {
     const bookings = await Booking.find()
-      .select("facultyName facultyDepartment facultyDesignation facultyEmail eventTitle eventDescription hall capacity startTime endTime isConflict overriddenBooking status")
+      .select("facultyName facultyDepartment facultyDesignation facultyEmail eventTitle eventDescription hall capacity startTime endTime isConflict conflictReason overriddenBooking status")
       .populate("coordinator", "username role")
       .sort({ createdAt: -1 })
       .lean();
@@ -311,4 +311,3 @@ module.exports = {
   approveBooking,
   rejectBooking
 };
-
