@@ -87,7 +87,8 @@ const loginUser = async (req, res) => {
         req.session.user = {
             userId: user._id,
             role: user.role,
-            status: user.status
+            status: user.status,
+            username: user.username
         };
 
       res.status(200).json({
@@ -270,4 +271,3 @@ module.exports = {
     deleteCoordinator,
     getActiveAdmins
 };
-
