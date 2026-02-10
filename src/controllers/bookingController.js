@@ -1,30 +1,80 @@
+/**
+ * Booking Controller
+ * 
+ * MODULES 2, 3, 4 - HALL BOOKING MANAGEMENT
+ * 
+ * This controller handles all booking-related operations including:
+ * - MODULE 2: Creating booking requests with faculty and event details
+ * - MODULE 3: Conflict detection, priority calculation, and alternative slot suggestions
+ * - MODULE 4: Approval workflow, status tracking, and audit logs
+ */
+
 const Booking = require("../models/booking");
 const { calculatePriorityScore, compareBookings } = require("../utils/prioritySystem");
 const { findAlternativeSlots } = require("../utils/slotSuggestion");
 const ApprovalLog = require("../models/approvalLog");
 
-// Helper to check overlapping bookings for a hall
-// excludeBookingId: optional ID to exclude from conflict check (useful when approving existing booking)
+/**
+ * MODULE 3 - Submodule 3.1: Time Slot Conflict Detection
+ * 
+ * Helper function to check if a hall has overlapping bookings
+ * 
+ * Conflict Detection Algorithm:
+ * - Two bookings conflict if their time ranges overlap
+ * - Overlap occurs when: (newStart < existingEnd) AND (newEnd > existingStart)
+ * - Only checks against "pending" and "approved" bookings (ignores rejected)
+ * 
+ * @param {String} hall - Hall name to check
+ * @param {Date} startTime - Start time of new booking
+ * @param {Date} endTime - End time of new booking
+ * @param {String} excludeBookingId - Optional booking ID to exclude (used when approving)
+ * @returns {Object|null} - Highest priority conflicting booking, or null if no conflict
+ */
 const hasConflictForHall = async (hall, startTime, endTime, excludeBookingId = null) => {
   const query = {
     hall,
-    status: { $in: ["pending", "approved"] },
+    status: { $in: ["pending", "approved"] }, // Only check active bookings
     $or: [
       {
-        startTime: { $lt: endTime },
-        endTime: { $gt: startTime }
+        // Check for time overlap
+        startTime: { $lt: endTime },    // Existing booking starts before new booking ends
+        endTime: { $gt: startTime }     // Existing booking ends after new booking starts
       }
     ]
   };
 
+  // Exclude a specific booking (useful when approving a booking)
   if (excludeBookingId) {
     query._id = { $ne: excludeBookingId };
   }
 
-  return Booking.findOne(query).sort({ priorityScore: -1 }); // Get the highest priority conflicting booking
+  // Return the highest priority conflicting booking
+  return Booking.findOne(query).sort({ priorityScore: -1 });
 };
 
-// POST /api/bookings
+/**
+ * MODULE 2 - Hall Booking Request Creation
+ * MODULE 3 - Conflict Detection & Priority Allocation
+ * MODULE 4 - Submit for Approval
+ * 
+ * Create a new hall booking request
+ * 
+ * Process Flow:
+ * 1. Validate required fields (MODULE 2.1: Faculty & Event Details)
+ * 2. Validate date and time (MODULE 2.3: Date & Time Selection)
+ * 3. Calculate priority score (MODULE 3.2: Priority-Based Allocation)
+ * 4. Check for conflicts (MODULE 3.1: Conflict Detection)
+ * 5. If conflict exists:
+ *    - Compare priorities
+ *    - Suggest alternatives (MODULE 3.3: Alternative Slot Suggestions)
+ *    - Return conflict response
+ * 6. If no conflict or override requested:
+ *    - Create booking with status "pending"
+ *    - Submit for approval (MODULE 4.1: Submit for Approval)
+ * 
+ * @route POST /api/bookings
+ * @access Private (coordinator only)
+ */
 const createBooking = async (req, res) => {
   try {
     const {
@@ -33,39 +83,49 @@ const createBooking = async (req, res) => {
       facultyEmail,
       eventTitle,
       eventDescription,
-      eventCategory = "Student", // Default
+      eventCategory = "Student", // Default category
       expectedAttendance = 0,
       hall,
       date,
       startTime,
       endTime,
-      overrideRequested,
-      conflictReason
+      overrideRequested,  // Flag to force booking despite conflict
+      conflictReason      // Reason for override request
     } = req.body;
 
+    // MODULE 2.1: Validate Faculty & Event Details
     if (!facultyName || !eventTitle || !hall || !date || !startTime || !endTime) {
       return res.status(400).json({
         message: "Required fields: facultyName, eventTitle, hall, date, startTime, endTime"
       });
     }
 
+    // MODULE 2.3: Validate Date & Time Slot
+    // Convert date and time strings to Date objects
     const startDateTime = new Date(`${date}T${startTime}`);
     const endDateTime = new Date(`${date}T${endTime}`);
 
+    // Validate date format
     if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
       return res.status(400).json({ message: "Invalid date or time format" });
     }
 
+    // Ensure end time is after start time
     if (endDateTime <= startDateTime) {
       return res.status(400).json({ message: "End time must be after start time" });
     }
 
+    // Prevent booking past time slots
     const now = new Date();
     if (startDateTime < now) {
       return res.status(400).json({ message: "Cannot book past time slots" });
     }
 
-    // 1. Calculate Priority Score
+    // MODULE 3.2: Calculate Priority Score
+    // Priority is based on:
+    // - Event category (Faculty > Department > Student Club > Student)
+    // - Advance booking (earlier bookings get bonus)
+    // - Expected attendance (larger events get bonus)
     const { totalScore, details } = calculatePriorityScore(
       eventCategory,
       new Date(), // booking date (now)
@@ -73,19 +133,21 @@ const createBooking = async (req, res) => {
       expectedAttendance
     );
 
-    // 2. Check for Conflicts
+    // MODULE 3.1: Check for Time Slot Conflicts
     const conflictBooking = await hasConflictForHall(hall, startDateTime, endDateTime);
 
+    // If conflict exists and override not requested, return conflict details
     if (conflictBooking && !overrideRequested) {
-      // Generate Priority Comparison
+      // MODULE 3.2: Generate Priority Comparison
       const priorityAnalysis = compareBookings(
         { priorityScore: totalScore },
         { priorityScore: conflictBooking.priorityScore }
       );
 
-      // Find Alternatives
+      // MODULE 3.3: Find Alternative Slots
       const alternatives = await findAlternativeSlots(hall, date, startTime, endTime);
 
+      // Return conflict response with alternatives
       return res.status(409).json({
         success: false,
         conflict: true,
@@ -105,7 +167,8 @@ const createBooking = async (req, res) => {
       });
     }
 
-    // 3. Create Booking (Pending)
+    // MODULE 4.1: Create Booking (Submit for Approval)
+    // Status is set to "pending" - awaiting admin approval
     const booking = await Booking.create({
       coordinator: req.session.user.userId,
       facultyName,
@@ -120,7 +183,7 @@ const createBooking = async (req, res) => {
       hall,
       startTime: startDateTime,
       endTime: endDateTime,
-      status: "pending",
+      status: "pending",  // MODULE 4.1: Submitted for approval
       isConflict: Boolean(conflictBooking),
       conflictReason: conflictBooking ? conflictReason : "",
       overriddenBooking: conflictBooking ? conflictBooking._id : null
@@ -139,14 +202,21 @@ const createBooking = async (req, res) => {
   }
 };
 
-// GET /api/bookings/my
-// Coordinator: list own booking requests
+/**
+ * Get coordinator's own booking requests
+ * 
+ * MODULE 4.3: Status Tracking
+ * Allows coordinators to view all their booking requests and track status
+ * 
+ * @route GET /api/bookings/my
+ * @access Private (coordinator only)
+ */
 const getMyBookings = async (req, res) => {
   try {
     const bookings = await Booking.find({
       coordinator: req.session.user.userId
     })
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: -1 })  // Most recent first
       .lean();
 
     return res.status(200).json(bookings);
@@ -158,15 +228,23 @@ const getMyBookings = async (req, res) => {
   }
 };
 
-// GET /api/bookings/availability
-// Coordinator: view all approved/pending bookings for availability checking
+/**
+ * Get hall availability (all approved/pending bookings)
+ * 
+ * MODULE 3.1: Conflict Detection Support
+ * Coordinators can view all existing bookings to check availability
+ * before creating a new booking request
+ * 
+ * @route GET /api/bookings/availability
+ * @access Private (coordinator only)
+ */
 const getAvailability = async (req, res) => {
   try {
     const bookings = await Booking.find({
       status: { $in: ["pending", "approved"] }
     })
       .select("hall startTime endTime status eventTitle facultyName")
-      .sort({ startTime: 1 })
+      .sort({ startTime: 1 })  // Chronological order
       .lean();
 
     return res.status(200).json(bookings);
@@ -178,13 +256,20 @@ const getAvailability = async (req, res) => {
   }
 };
 
-// GET /api/bookings/pending
-// Admin: list all pending booking requests
+/**
+ * Get all pending booking requests
+ * 
+ * MODULE 4.2: Approver Review
+ * Admins view all pending bookings awaiting approval
+ * 
+ * @route GET /api/bookings/pending
+ * @access Private (admin only)
+ */
 const getPendingBookings = async (req, res) => {
   try {
     const bookings = await Booking.find({ status: "pending" })
-      .populate("coordinator", "username role")
-      .sort({ createdAt: -1 })
+      .populate("coordinator", "username role")  // Include coordinator details
+      .sort({ createdAt: -1 })  // Most recent first
       .lean();
 
     return res.status(200).json(bookings);
@@ -196,8 +281,14 @@ const getPendingBookings = async (req, res) => {
   }
 };
 
-// GET /api/bookings
-// Admin: list all bookings (any status)
+/**
+ * Get all bookings (any status)
+ * 
+ * Admin view of all bookings for management and reporting
+ * 
+ * @route GET /api/bookings
+ * @access Private (admin only)
+ */
 const getAllBookings = async (req, res) => {
   try {
     const bookings = await Booking.find()
@@ -214,31 +305,46 @@ const getAllBookings = async (req, res) => {
   }
 };
 
-// PATCH /api/bookings/:id/approve
+/**
+ * MODULE 4.2: Approve a booking request
+ * 
+ * Approval Process:
+ * 1. Validate booking exists and is not already approved
+ * 2. For non-override bookings: Re-check for conflicts (in case new bookings were created)
+ * 3. For override bookings: Reject the lower-priority conflicting booking
+ * 4. Update booking status to "approved"
+ * 5. Create approval log entry (MODULE 4.3: Audit Trail)
+ * 
+ * @route PATCH /api/bookings/:id/approve
+ * @access Private (admin only)
+ */
 const approveBooking = async (req, res) => {
   try {
     const { id } = req.params;
     const { remarks } = req.body;
 
+    // Find the booking
     const booking = await Booking.findById(id);
 
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
     }
 
+    // Prevent duplicate approval
     if (booking.status === "approved") {
       return res.status(400).json({ message: "Booking is already approved" });
     }
 
     const previousStatus = booking.status;
 
-    // Only check conflict for NON-override bookings
+    // MODULE 3.1: Re-check for conflicts (only for non-override bookings)
+    // This ensures no new conflicting bookings were created since submission
     if (!booking.isConflict) {
       const conflict = await hasConflictForHall(
         booking.hall,
         booking.startTime,
         booking.endTime,
-        booking._id
+        booking._id  // Exclude this booking from conflict check
       );
 
       if (conflict) {
@@ -250,7 +356,8 @@ const approveBooking = async (req, res) => {
       }
     }
 
-    // If this is an override booking → reject old one
+    // MODULE 3.2: Handle Priority-Based Override
+    // If this is an override booking (higher priority), reject the old booking
     if (booking.isConflict && booking.overriddenBooking) {
       const oldBooking = await Booking.findByIdAndUpdate(
         booking.overriddenBooking,
@@ -260,7 +367,7 @@ const approveBooking = async (req, res) => {
         }
       );
 
-      // Log rejection of old booking
+      // MODULE 4.3: Log rejection of old booking
       if (oldBooking) {
         await ApprovalLog.create({
           booking: oldBooking._id,
@@ -277,11 +384,13 @@ const approveBooking = async (req, res) => {
       }
     }
 
+    // Update booking status to approved
     booking.status = "approved";
     booking.rejectionReason = "";
     await booking.save();
 
-    // Log Approval
+    // MODULE 4.3: Create Approval Log Entry
+    // This maintains an audit trail of all approval decisions
     await ApprovalLog.create({
       booking: booking._id,
       action: "Approved",
@@ -311,7 +420,18 @@ const approveBooking = async (req, res) => {
   }
 };
 
-// PATCH /api/bookings/:id/reject
+/**
+ * MODULE 4.2: Reject a booking request
+ * 
+ * Rejection Process:
+ * 1. Find booking
+ * 2. Update status to "rejected"
+ * 3. Store rejection reason
+ * 4. Create approval log entry (MODULE 4.3: Audit Trail)
+ * 
+ * @route PATCH /api/bookings/:id/reject
+ * @access Private (admin only)
+ */
 const rejectBooking = async (req, res) => {
   try {
     const { id } = req.params;
@@ -325,11 +445,12 @@ const rejectBooking = async (req, res) => {
 
     const previousStatus = booking.status;
 
+    // Update booking status to rejected
     booking.status = "rejected";
     booking.rejectionReason = reason || "";
     await booking.save();
 
-    // Log Rejection
+    // MODULE 4.3: Create Rejection Log Entry
     await ApprovalLog.create({
       booking: booking._id,
       action: "Rejected",
@@ -357,13 +478,26 @@ const rejectBooking = async (req, res) => {
   }
 };
 
-// GET /api/bookings/:id/logs
+/**
+ * MODULE 4.3: Get approval logs for a booking
+ * 
+ * Returns complete audit trail for a booking:
+ * - All approval/rejection actions
+ * - Who performed each action
+ * - When each action occurred
+ * - Remarks and reasons
+ * 
+ * This ensures transparency and accountability in the approval process
+ * 
+ * @route GET /api/bookings/:id/logs
+ * @access Private (admin and booking coordinator)
+ */
 const getBookingLogs = async (req, res) => {
   try {
     const { id } = req.params;
     const logs = await ApprovalLog.find({ booking: id })
-      .populate("performedBy", "username role")
-      .sort({ createdAt: -1 });
+      .populate("performedBy", "username role")  // Include admin details
+      .sort({ createdAt: -1 });  // Most recent first
 
     return res.status(200).json(logs);
   } catch (error) {
@@ -372,6 +506,7 @@ const getBookingLogs = async (req, res) => {
   }
 };
 
+// Export all controller functions
 module.exports = {
   createBooking,
   getMyBookings,
@@ -382,4 +517,3 @@ module.exports = {
   rejectBooking,
   getBookingLogs
 };
-
