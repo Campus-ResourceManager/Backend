@@ -1,4 +1,5 @@
 const Booking = require("../models/booking");
+const { createLog } = require("./auditLogController");
 
 // Helper to check overlapping bookings for a hall
 // excludeBookingId: optional ID to exclude from conflict check (useful when approving existing booking)
@@ -90,10 +91,10 @@ const createBooking = async (req, res) => {
     }
 
     if (!capacity || capacity < 1 || capacity > 300) {
-  return res.status(400).json({
-    message: "Capacity must be between 1 and 300"
-  });
-}
+      return res.status(400).json({
+        message: "Capacity must be between 1 and 300"
+      });
+    }
 
 
     const booking = await Booking.create({
@@ -113,6 +114,15 @@ const createBooking = async (req, res) => {
       conflictReason: conflictBooking ? conflictReason : "",
       overriddenBooking: conflictBooking ? conflictBooking._id : null
     });
+
+    await createLog(
+      req.session.user.userId,
+      req.session.user.username,
+      "BOOKING_CREATE",
+      "Booking",
+      booking._id,
+      `Created booking for ${hall} - ${eventTitle}`
+    );
 
 
     return res.status(201).json({
@@ -208,16 +218,19 @@ const getAllBookings = async (req, res) => {
 
 // PATCH /api/bookings/:id/approve
 const approveBooking = async (req, res) => {
+  console.log("approveBooking called for ID:", req.params.id);
   try {
     const { id } = req.params;
 
     const booking = await Booking.findById(id);
 
     if (!booking) {
+      console.log("Booking not found");
       return res.status(404).json({ message: "Booking not found" });
     }
 
     if (booking.status === "approved") {
+      console.log("Booking already approved");
       return res.status(400).json({ message: "Booking is already approved" });
     }
 
@@ -231,6 +244,7 @@ const approveBooking = async (req, res) => {
       );
 
       if (conflict) {
+        console.log("Conflict detected during approval");
         return res.status(409).json({
           success: false,
           status: "rejected",
@@ -239,20 +253,55 @@ const approveBooking = async (req, res) => {
       }
     }
 
+
     // If this is an override booking → reject old one
     if (booking.isConflict && booking.overriddenBooking) {
-      await Booking.findByIdAndUpdate(
-        booking.overriddenBooking,
-        {
-          status: "rejected",
-          rejectionReason: "Overridden by admin approval"
-        }
-      );
+      console.log("Processing override for:", booking.overriddenBooking);
+      try {
+        await Booking.findByIdAndUpdate(
+          booking.overriddenBooking,
+          {
+            status: "rejected",
+            rejectionReason: "Overridden by admin approval"
+          }
+        );
+
+        console.log("Old booking rejected. Creating log...");
+        await createLog(
+          req.session.user.userId,
+          req.session.user.username,
+          "BOOKING_OVERRIDE",
+          "Booking",
+          booking.overriddenBooking,
+          `Overrode previous booking due to approval of ${booking.eventTitle}`
+        );
+      } catch (overrideError) {
+        console.error("Error processing override:", overrideError);
+        // Continue? Or fail? Usually continue as we want to approve the new one.
+      }
     }
 
     booking.status = "approved";
     booking.rejectionReason = "";
+
+    console.log("Saving booking...");
     await booking.save();
+    console.log("Booking saved successfully");
+
+    console.log("Creating approval log...");
+    if (typeof createLog !== 'function') {
+      console.error("CRITICAL: createLog is not a function!");
+    } else {
+      await createLog(
+        req.session.user.userId,
+        req.session.user.username,
+        "BOOKING_APPROVE",
+        "Booking",
+        booking._id,
+        `Approved booking: ${booking.eventTitle}`
+      );
+      console.log("Approval log created");
+    }
 
     return res.status(200).json({
       success: true,
@@ -262,9 +311,11 @@ const approveBooking = async (req, res) => {
     });
 
   } catch (error) {
-    console.error(error);
+    console.error("Error in approveBooking:", error);
+    // Return the stack trace in development for easier debugging
     return res.status(500).json({
-      message: "Server error"
+      message: "Server error during approval",
+      error: process.env.NODE_ENV === 'development' ? error.stack : error.message
     });
   }
 };
@@ -287,6 +338,15 @@ const rejectBooking = async (req, res) => {
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
     }
+
+    await createLog(
+      req.session.user.userId,
+      req.session.user.username,
+      "BOOKING_REJECT",
+      "Booking",
+      id,
+      `Rejected booking: ${booking.eventTitle}. Reason: ${reason || "None"}`
+    );
 
     return res.status(200).json({
       success: true,

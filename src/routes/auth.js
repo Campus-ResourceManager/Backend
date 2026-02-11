@@ -1,16 +1,17 @@
 const express = require("express");
-const { registerUser, 
-        loginUser, 
+const { registerUser,
+        loginUser,
         logoutUser,
-        getMe, 
+        getMe,
         getPendingAdmins,
-        approveAdmin, 
+        approveAdmin,
         rejectAdmin,
         disableAdmin,
         removeAdmin,
         getCoordinators,
         deleteCoordinator,
-        getActiveAdmins
+        getActiveAdmins,
+        getStats
 } = require("../controllers/authController");
 
 const requireAuth = require("../middlewares/requireAuth");
@@ -31,6 +32,7 @@ router.patch("/admin/:id/approve", requireAuth, requireRole("admin"), approveAdm
 router.delete("/admin/:id/reject", requireAuth, requireRole("admin"), rejectAdmin);
 router.patch("/admin/:id/disable", requireAuth, requireRole("admin"), disableAdmin);
 router.delete("/admin/:id/remove", requireAuth, requireRole("admin"), removeAdmin);
+router.get("/stats", requireAuth, getStats);
 
 module.exports = router;
 
