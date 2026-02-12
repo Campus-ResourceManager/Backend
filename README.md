@@ -51,8 +51,10 @@ By providing a centralized database and business logic, it ensures:
 3.  **Environment Configuration:**
     Create a `.env` file in the root directory (use `.env.example` as a template):
     ```env
-    MONGO_URI=mongodb://127.0.0.1:27017/campus-hall-booking
     PORT=8000
+    MONGO_URI=mongodb://127.0.0.1:27017/campusResourceManagement
+    JWT_SECRET=YOUR_KEY
+    NODE_ENV=development
     ```
 
 4.  **Seed Data (Optional):**
@@ -144,4 +146,5 @@ src/
 | Sandheep G S |
 | Radha Krishna |
 | Sujith Kumar A |
+
 
