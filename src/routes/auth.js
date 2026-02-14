@@ -20,7 +20,6 @@ const router = express.Router();
 router.post("/login", loginUser);
 // Public admin request (NO auth required)
 router.post("/admin/request", registerUser);
-router.post("/register", requireAuth, requireRole("admin"), registerUser);
 router.post("/logout", requireAuth, logoutUser);
 router.get("/me", requireAuth, getMe);
 router.get("/coordinators", requireAuth, requireRole("admin"), getCoordinators);
