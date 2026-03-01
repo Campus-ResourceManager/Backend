@@ -5,6 +5,8 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const authRoutes = require("./routes/auth.js");
 const bookingRoutes = require("./routes/booking.js");
+const resourceRoutes = require("./routes/resource");
+
 
 const app = express();
 const port = process.env.PORT;
@@ -29,6 +31,7 @@ app.use(
 
 app.use("/api/auth", authRoutes);
 app.use("/api/bookings", bookingRoutes);
+app.use("/api/resources", resourceRoutes);
 
 app.get("/", (req, res) => {
   res.send("backend running");
