@@ -19,6 +19,7 @@ app.use(
 );
 
 app.use(express.json());
+app.use(require("./middlewares/apiMonitor")); // Apply API monitoring logic
 app.use(
   session({
     secret: "keyboardCat",
@@ -31,6 +32,11 @@ app.use(
 app.use("/api/auth", authRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/audit-logs", auditLogRoutes);
+app.use("/api/rooms", require("./routes/rooms"));
+app.use("/api/forecasting", require("./routes/forecasting"));
+
+// Initialize cron jobs
+require("./services/alertService").initAlertService();
 
 app.get("/", (req, res) => {
   res.send("backend running");

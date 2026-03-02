@@ -1,0 +1,324 @@
+
+> backend@1.0.0 test
+> jest --detectOpenHandles --coverage
+
+(node:10624) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+FAIL __tests__/integration/recommendation.test.js
+  POST /api/bookings/recommend
+    × should return eligible rooms when no conflicts exist (92 ms)
+    × should filter out rooms with conflicts (8 ms)
+    √ should return 400 if fields are missing (12 ms)
+
+  ● POST /api/bookings/recommend › should return eligible rooms when no conflicts exist
+
+    expect(received).toEqual(expected) // deep equality
+
+    Expected: 2
+    Received: undefined
+
+    [0m [90m 61 |[39m
+     [90m 62 |[39m         expect(res[33m.[39mstatusCode)[33m.[39mtoEqual([35m200[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 63 |[39m         expect(res[33m.[39mbody[33m.[39mlength)[33m.[39mtoEqual([35m2[39m)[33m;[39m
+     [90m    |[39m                                 [31m[1m^[22m[39m
+     [90m 64 |[39m         expect(res[33m.[39mbody[[35m0[39m][33m.[39mname)[33m.[39mtoEqual([32m'Room A'[39m)[33m;[39m
+     [90m 65 |[39m     })[33m;[39m
+     [90m 66 |[39m[0m
+
+      at Object.<anonymous> (__tests__/integration/recommendation.test.js:63:33)
+
+  ● POST /api/bookings/recommend › should filter out rooms with conflicts
+
+    expect(received).toEqual(expected) // deep equality
+
+    Expected: 1
+    Received: undefined
+
+    [0m [90m 90 |[39m
+     [90m 91 |[39m         expect(res[33m.[39mstatusCode)[33m.[39mtoEqual([35m200[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 92 |[39m         expect(res[33m.[39mbody[33m.[39mlength)[33m.[39mtoEqual([35m1[39m)[33m;[39m
+     [90m    |[39m                                 [31m[1m^[22m[39m
+     [90m 93 |[39m         expect(res[33m.[39mbody[[35m0[39m][33m.[39mname)[33m.[39mtoEqual([32m'Room B'[39m)[33m;[39m
+     [90m 94 |[39m     })[33m;[39m
+     [90m 95 |[39m[0m
+
+      at Object.<anonymous> (__tests__/integration/recommendation.test.js:92:33)
+
+  console.error
+    Forecasting Error: TypeError: Booking.find is not a function
+        at find (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\src\controllers\forecastingController.js:74:49)
+        at Layer.handleRequest (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\router\lib\layer.js:152:17)
+        at next (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\router\lib\route.js:157:13)
+        at mockAuth (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\__tests__\unit\forecasting.test.js:16:5)
+        at Layer.handleRequest (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\router\lib\layer.js:152:17)
+        at next (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\router\lib\route.js:157:13)
+        at Route.dispatch (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\router\lib\route.js:117:3)
+        at handle (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\router\index.js:435:11)
+        at Layer.handleRequest (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\router\lib\layer.js:152:17)
+        at C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\router\index.js:295:15
+        at processParams (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\router\index.js:582:12)
+        at next (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\router\index.js:291:5)
+        at read (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\body-parser\lib\read.js:53:5)
+        at jsonParser (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\body-parser\lib\types\json.js:88:5)
+        at Layer.handleRequest (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\router\lib\layer.js:152:17)
+        at trimPrefix (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\router\index.js:342:13)
+        at C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\router\index.js:297:9
+        at processParams (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\router\index.js:582:12)
+        at next (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\router\index.js:291:5)
+        at router.handle (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\router\index.js:186:3)
+        at app.handle (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\express\lib\application.js:177:15)
+        at Server.app (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\express\lib\express.js:38:9)
+        at Server.emit (node:events:508:28)
+        at parserOnIncoming (node:_http_server:1212:12)
+        at HTTPParser.parserOnHeadersComplete (node:_http_common:123:17)
+
+    [0m [90m 135 |[39m         })[33m;[39m
+     [90m 136 |[39m     } [36mcatch[39m (error) {
+    [31m[1m>[22m[39m[90m 137 |[39m         console[33m.[39merror([32m"Forecasting Error:"[39m[33m,[39m error)[33m;[39m
+     [90m     |[39m                 [31m[1m^[22m[39m
+     [90m 138 |[39m         res[33m.[39mstatus([35m500[39m)[33m.[39mjson({ message[33m:[39m [32m"Failed to generate forecast"[39m })[33m;[39m
+     [90m 139 |[39m     }
+     [90m 140 |[39m }[33m;[39m[0m
+
+      at error (src/controllers/forecastingController.js:137:17)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at next (node_modules/router/lib/route.js:157:13)
+      at mockAuth (__tests__/unit/forecasting.test.js:16:5)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at next (node_modules/router/lib/route.js:157:13)
+      at Route.dispatch (node_modules/router/lib/route.js:117:3)
+      at handle (node_modules/router/index.js:435:11)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at node_modules/router/index.js:295:15
+      at processParams (node_modules/router/index.js:582:12)
+      at next (node_modules/router/index.js:291:5)
+      at read (node_modules/body-parser/lib/read.js:53:5)
+      at jsonParser (node_modules/body-parser/lib/types/json.js:88:5)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (node_modules/router/index.js:342:13)
+      at node_modules/router/index.js:297:9
+      at processParams (node_modules/router/index.js:582:12)
+      at next (node_modules/router/index.js:291:5)
+      at router.handle (node_modules/router/index.js:186:3)
+      at app.handle (node_modules/express/lib/application.js:177:15)
+      at Server.app (node_modules/express/lib/express.js:38:9)
+
+  console.error
+    Forecasting Error: TypeError: Booking.find is not a function
+        at find (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\src\controllers\forecastingController.js:74:49)
+        at Layer.handleRequest (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\router\lib\layer.js:152:17)
+        at next (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\router\lib\route.js:157:13)
+        at mockAuth (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\__tests__\unit\forecasting.test.js:16:5)
+        at Layer.handleRequest (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\router\lib\layer.js:152:17)
+        at next (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\router\lib\route.js:157:13)
+        at Route.dispatch (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\router\lib\route.js:117:3)
+        at handle (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\router\index.js:435:11)
+        at Layer.handleRequest (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\router\lib\layer.js:152:17)
+        at C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\router\index.js:295:15
+        at processParams (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\router\index.js:582:12)
+        at next (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\router\index.js:291:5)
+        at read (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\body-parser\lib\read.js:53:5)
+        at jsonParser (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\body-parser\lib\types\json.js:88:5)
+        at Layer.handleRequest (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\router\lib\layer.js:152:17)
+        at trimPrefix (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\router\index.js:342:13)
+        at C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\router\index.js:297:9
+        at processParams (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\router\index.js:582:12)
+        at next (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\router\index.js:291:5)
+        at router.handle (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\router\index.js:186:3)
+        at app.handle (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\express\lib\application.js:177:15)
+        at Server.app (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\express\lib\express.js:38:9)
+        at Server.emit (node:events:508:28)
+        at parserOnIncoming (node:_http_server:1212:12)
+        at HTTPParser.parserOnHeadersComplete (node:_http_common:123:17)
+
+    [0m [90m 135 |[39m         })[33m;[39m
+     [90m 136 |[39m     } [36mcatch[39m (error) {
+    [31m[1m>[22m[39m[90m 137 |[39m         console[33m.[39merror([32m"Forecasting Error:"[39m[33m,[39m error)[33m;[39m
+     [90m     |[39m                 [31m[1m^[22m[39m
+     [90m 138 |[39m         res[33m.[39mstatus([35m500[39m)[33m.[39mjson({ message[33m:[39m [32m"Failed to generate forecast"[39m })[33m;[39m
+     [90m 139 |[39m     }
+     [90m 140 |[39m }[33m;[39m[0m
+
+      at error (src/controllers/forecastingController.js:137:17)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at next (node_modules/router/lib/route.js:157:13)
+      at mockAuth (__tests__/unit/forecasting.test.js:16:5)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at next (node_modules/router/lib/route.js:157:13)
+      at Route.dispatch (node_modules/router/lib/route.js:117:3)
+      at handle (node_modules/router/index.js:435:11)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at node_modules/router/index.js:295:15
+      at processParams (node_modules/router/index.js:582:12)
+      at next (node_modules/router/index.js:291:5)
+      at read (node_modules/body-parser/lib/read.js:53:5)
+      at jsonParser (node_modules/body-parser/lib/types/json.js:88:5)
+      at Layer.handleRequest (node_modules/router/lib/layer.js:152:17)
+      at trimPrefix (node_modules/router/index.js:342:13)
+      at node_modules/router/index.js:297:9
+      at processParams (node_modules/router/index.js:582:12)
+      at next (node_modules/router/index.js:291:5)
+      at router.handle (node_modules/router/index.js:186:3)
+      at app.handle (node_modules/express/lib/application.js:177:15)
+      at Server.app (node_modules/express/lib/express.js:38:9)
+
+FAIL __tests__/unit/forecasting.test.js
+  GET /api/forecasting/demand
+    × should return 7-day forecast (23 ms)
+    √ should handle errors gracefully (10 ms)
+
+  ● GET /api/forecasting/demand › should return 7-day forecast
+
+    expect(received).toEqual(expected) // deep equality
+
+    Expected: 200
+    Received: 500
+
+    [0m [90m 37 |[39m         [36mconst[39m res [33m=[39m [36mawait[39m request(app)[33m.[39m[36mget[39m([32m'/api/forecasting/demand'[39m)[33m;[39m
+     [90m 38 |[39m
+    [31m[1m>[22m[39m[90m 39 |[39m         expect(res[33m.[39mstatusCode)[33m.[39mtoEqual([35m200[39m)[33m;[39m
+     [90m    |[39m                                [31m[1m^[22m[39m
+     [90m 40 |[39m         expect(res[33m.[39mbody[33m.[39mlength)[33m.[39mtoEqual([35m7[39m)[33m;[39m
+     [90m 41 |[39m         expect([33mBooking[39m[33m.[39maggregate)[33m.[39mtoHaveBeenCalled()[33m;[39m
+     [90m 42 |[39m     })[33m;[39m[0m
+
+      at Object.<anonymous> (__tests__/unit/forecasting.test.js:39:32)
+
+PASS __tests__/controllers/roomController.test.js
+  Room Controller
+    getRooms
+      √ should get active rooms (9 ms)
+      √ should return 500 on error (8 ms)
+    getAllRooms
+      √ should get all rooms (7 ms)
+    createRoom
+      √ should create a room (10 ms)
+      √ should return 400 for duplicate name (7 ms)
+      √ should return 400 if fields missing (7 ms)
+    updateRoom
+      √ should update a room successfully (17 ms)
+      √ should return 404 if room not found (7 ms)
+      √ should return 400 if new name collides (6 ms)
+    deleteRoom
+      √ should delete a room (6 ms)
+      √ should return 404 if room not found (7 ms)
+
+  console.error
+    Error fetching audit logs: Error: Test Error
+        at Object.<anonymous> (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\__tests__\controllers\auditLogController.test.js:24:60)
+        at Promise.finally.completed (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\jest-circus\build\jestAdapterInit.js:1557:28)
+        at new Promise (<anonymous>)
+        at callAsyncCircusFn (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\jest-circus\build\jestAdapterInit.js:1497:10)
+        at _callCircusTest (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\jest-circus\build\jestAdapterInit.js:1007:40)
+        at _runTest (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\jest-circus\build\jestAdapterInit.js:947:3)
+        at C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\jest-circus\build\jestAdapterInit.js:849:7
+        at _runTestsForDescribeBlock (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\jest-circus\build\jestAdapterInit.js:862:11)
+        at _runTestsForDescribeBlock (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\jest-circus\build\jestAdapterInit.js:857:11)
+        at _runTestsForDescribeBlock (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\jest-circus\build\jestAdapterInit.js:857:11)
+        at run (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\jest-circus\build\jestAdapterInit.js:761:3)
+        at runAndTransformResultsToJestFormat (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\jest-circus\build\jestAdapterInit.js:1918:21)
+        at jestAdapter (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\jest-circus\build\runner.js:101:19)
+        at runTestInternal (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\jest-runner\build\index.js:275:16)
+        at runTest (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\jest-runner\build\index.js:343:7)
+
+    [0m [90m 35 |[39m         res[33m.[39mstatus([35m200[39m)[33m.[39mjson(logs)[33m;[39m
+     [90m 36 |[39m     } [36mcatch[39m (error) {
+    [31m[1m>[22m[39m[90m 37 |[39m         console[33m.[39merror([32m"Error fetching audit logs:"[39m[33m,[39m error)[33m;[39m
+     [90m    |[39m                 [31m[1m^[22m[39m
+     [90m 38 |[39m         res[33m.[39mstatus([35m500[39m)[33m.[39mjson({ message[33m:[39m [32m"Server error"[39m })[33m;[39m
+     [90m 39 |[39m     }
+     [90m 40 |[39m }[33m;[39m[0m
+
+      at error (src/controllers/auditLogController.js:37:17)
+
+PASS __tests__/controllers/auditLogController.test.js
+  Audit Log Controller
+    getAuditLogs
+      √ should return 500 if an error occurs (18 ms)
+      √ should correctly query with filters (6 ms)
+    createLog
+      √ should create an audit log successfully without returning a response (1 ms)
+      √ should catch errors but not crash (1 ms)
+
+PASS __tests__/controllers/bookingController.test.js
+  Booking Controller
+    createBooking
+      √ should return 400 if required fields are missing (11 ms)
+      √ should return 400 for past dates (7 ms)
+      √ should detect conflicts and return 409 (6 ms)
+      √ should successfully create a pending booking (5 ms)
+    recommendRooms
+      √ should return 400 if missing fields (6 ms)
+      √ should return empty if no eligible rooms (6 ms)
+      √ should check conflicts and return available rooms with AI message (6 ms)
+
+PASS __tests__/authController.test.js
+  Auth routes basic contract
+    √ should return 400 when required fields are missing on admin registration request (11 ms)
+    √ should return 400 when required fields are missing on login (6 ms)
+
+  console.error
+    Forecasting Error: Error: Test Error
+        at Object.<anonymous> (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\__tests__\controllers\forecastingController.test.js:35:45)
+        at Promise.finally.completed (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\jest-circus\build\jestAdapterInit.js:1557:28)
+        at new Promise (<anonymous>)
+        at callAsyncCircusFn (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\jest-circus\build\jestAdapterInit.js:1497:10)
+        at _callCircusTest (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\jest-circus\build\jestAdapterInit.js:1007:40)
+        at _runTest (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\jest-circus\build\jestAdapterInit.js:947:3)
+        at C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\jest-circus\build\jestAdapterInit.js:849:7
+        at _runTestsForDescribeBlock (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\jest-circus\build\jestAdapterInit.js:862:11)
+        at _runTestsForDescribeBlock (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\jest-circus\build\jestAdapterInit.js:857:11)
+        at run (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\jest-circus\build\jestAdapterInit.js:761:3)
+        at runAndTransformResultsToJestFormat (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\jest-circus\build\jestAdapterInit.js:1918:21)
+        at jestAdapter (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\jest-circus\build\runner.js:101:19)
+        at runTestInternal (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\jest-runner\build\index.js:275:16)
+        at runTest (C:\Users\pradh\OneDrive\Desktop\campus-resource\Backend\node_modules\jest-runner\build\index.js:343:7)
+
+    [0m [90m 135 |[39m         })[33m;[39m
+     [90m 136 |[39m     } [36mcatch[39m (error) {
+    [31m[1m>[22m[39m[90m 137 |[39m         console[33m.[39merror([32m"Forecasting Error:"[39m[33m,[39m error)[33m;[39m
+     [90m     |[39m                 [31m[1m^[22m[39m
+     [90m 138 |[39m         res[33m.[39mstatus([35m500[39m)[33m.[39mjson({ message[33m:[39m [32m"Failed to generate forecast"[39m })[33m;[39m
+     [90m 139 |[39m     }
+     [90m 140 |[39m }[33m;[39m[0m
+
+      at error (src/controllers/forecastingController.js:137:17)
+
+PASS __tests__/controllers/forecastingController.test.js
+  Forecasting Controller
+    √ should return 500 if an error occurs (21 ms)
+    √ should calculate forecast and generic insights when no AI key is present (7 ms)
+    √ should calculate forecast and call AI when key is present (6 ms)
+
+PASS __tests__/models/room.test.js
+  Room Model
+    √ should be invalid if name is empty (5 ms)
+    √ should be invalid if capacity is less than 1 (1 ms)
+    √ should create a valid room (1 ms)
+
+---------------------------|---------|----------|---------|---------|------------------------------------------------------------------------------------------------------
+File                       | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s                                                                                    
+---------------------------|---------|----------|---------|---------|------------------------------------------------------------------------------------------------------
+All files                  |   53.81 |    50.57 |   44.73 |   53.31 |                                                                                                      
+ controllers               |   50.37 |    53.01 |   45.71 |   49.74 |                                                                                                      
+  auditLogController.js    |   88.46 |    83.33 |     100 |   88.46 | 24-26                                                                                                
+  authController.js        |    22.6 |     9.09 |   15.38 |    22.6 | 16-56,71-126,131-142,148-159,164-169,173-178,182-209,214-235,240-261,267-302,307-311,315-337,343-362 
+  bookingController.js     |   42.33 |    56.75 |      30 |   42.64 | 8-25,59,65,95,136-137,146-156,165-176,185-195,204-214,222-317,326-360,431,434,439-440                
+  forecastingController.js |   95.83 |      100 |     100 |   95.45 | 56-57                                                                                                
+  roomController.js        |   65.75 |    81.81 |   83.33 |   65.21 | 19,40,70,84,90-124                                                                                   
+ middlewares               |   38.46 |        0 |   33.33 |   38.46 |                                                                                                      
+  requireAuth.js           |      40 |        0 |       0 |      40 | 2-7                                                                                                  
+  requireRole.js           |    37.5 |        0 |      50 |    37.5 | 3-11                                                                                                 
+ models                    |     100 |      100 |     100 |     100 |                                                                                                      
+  AuditLog.js              |     100 |      100 |     100 |     100 |                                                                                                      
+  Room.js                  |     100 |      100 |     100 |     100 |                                                                                                      
+  booking.js               |     100 |      100 |     100 |     100 |                                                                                                      
+  user.js                  |     100 |      100 |     100 |     100 |                                                                                                      
+ routes                    |     100 |      100 |     100 |     100 |                                                                                                      
+  auth.js                  |     100 |      100 |     100 |     100 |                                                                                                      
+---------------------------|---------|----------|---------|---------|------------------------------------------------------------------------------------------------------
+Test Suites: 2 failed, 6 passed, 8 total
+Tests:       3 failed, 32 passed, 35 total
+Snapshots:   0 total
+Time:        1.895 s
+Ran all test suites.

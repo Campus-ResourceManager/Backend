@@ -1,5 +1,6 @@
 const User = require("../models/user");
 const Booking = require("../models/booking");
+const Room = require("../models/Room");
 const bcrypt = require("bcrypt");
 const { createLog } = require("./auditLogController");
 
@@ -342,20 +343,17 @@ const deleteCoordinator = async (req, res) => {
 const getStats = async (req, res) => {
   try {
     const totalStudents = await User.countDocuments({ role: "coordinator" });
-    const totalFaculty = 100; // Assuming static for now as per dashboard, but could be dynamic
     const totalAdmins = await User.countDocuments({ role: "admin", status: "active" });
     const pendingAdmins = await User.countDocuments({ role: "admin", status: "disabled" });
     const pendingBookings = await Booking.countDocuments({ status: "pending" });
-    const totalHalls = 200; // Static placeholder
+    const totalHalls = await Room.countDocuments({ isActive: true }); // Live count from DB
 
     res.status(200).json({
       totalStudents,
-      totalFaculty,
       totalAdmins,
       pendingAdmins,
       pendingBookings,
       totalHalls,
-      departments: 12 // Static placeholder
     });
   } catch (error) {
     console.error("Error fetching stats:", error);

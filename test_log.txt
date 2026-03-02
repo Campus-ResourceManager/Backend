@@ -1,0 +1,41 @@
+(node:2296) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+FAIL __tests__/integration/recommendation.test.js
+  POST /api/bookings/recommend
+    × should return eligible rooms when no conflicts exist (2 ms)
+    × should filter out rooms with conflicts
+    √ should return 400 if fields are missing (46 ms)
+
+  ● POST /api/bookings/recommend › should return eligible rooms when no conflicts exist
+
+    TypeError: Room.find.mockImplementation is not a function
+
+    [0m [90m 36 |[39m
+     [90m 37 |[39m         [90m// Mock Room.find to return our rooms[39m
+    [31m[1m>[22m[39m[90m 38 |[39m         [33mRoom[39m[33m.[39mfind[33m.[39mmockImplementation(() [33m=>[39m ({
+     [90m    |[39m                   [31m[1m^[22m[39m
+     [90m 39 |[39m             sort[33m:[39m jest[33m.[39mfn()[33m.[39mmockResolvedValue(mockRooms)
+     [90m 40 |[39m         }))[33m;[39m
+     [90m 41 |[39m[0m
+
+      at Object.<anonymous> (__tests__/integration/recommendation.test.js:38:19)
+
+  ● POST /api/bookings/recommend › should filter out rooms with conflicts
+
+    TypeError: Room.find.mockImplementation is not a function
+
+    [0m [90m 68 |[39m         ][33m;[39m
+     [90m 69 |[39m
+    [31m[1m>[22m[39m[90m 70 |[39m         [33mRoom[39m[33m.[39mfind[33m.[39mmockImplementation(() [33m=>[39m ({
+     [90m    |[39m                   [31m[1m^[22m[39m
+     [90m 71 |[39m             sort[33m:[39m jest[33m.[39mfn()[33m.[39mmockResolvedValue(mockRooms)
+     [90m 72 |[39m         }))[33m;[39m
+     [90m 73 |[39m[0m
+
+      at Object.<anonymous> (__tests__/integration/recommendation.test.js:70:19)
+
+Test Suites: 1 failed, 1 total
+Tests:       2 failed, 1 passed, 3 total
+Snapshots:   0 total
+Time:        0.922 s, estimated 1 s
+Ran all test suites matching __tests__/integration/recommendation.test.js.

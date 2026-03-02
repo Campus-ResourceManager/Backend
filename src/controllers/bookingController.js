@@ -1,4 +1,5 @@
 const Booking = require("../models/booking");
+const Room = require("../models/Room");
 const { createLog } = require("./auditLogController");
 
 // Helper to check overlapping bookings for a hall
@@ -40,6 +41,8 @@ const createBooking = async (req, res) => {
       date, // e.g. "2025-02-01"
       startTime, // e.g. "10:00"
       endTime, // e.g. "12:00"
+      priority,
+      eventType,
       overrideRequested,   // boolean
       conflictReason       // string
     } = req.body;
@@ -82,12 +85,26 @@ const createBooking = async (req, res) => {
       endTime: { $gt: startDateTime }
     });
 
-    if (conflictBooking && !overrideRequested) {
-      return res.status(409).json({
-        success: false,
-        conflict: true,
-        message: "Hall already booked. Do you want to request override?"
-      });
+    const priorityOrder = { "Normal": 0, "High": 1, "Critical": 2 };
+    const newPriorityVal = priorityOrder[priority || "Normal"] || 0;
+
+    if (conflictBooking) {
+      const existingPriorityVal = priorityOrder[conflictBooking.priority || "Normal"] || 0;
+
+      if (newPriorityVal < existingPriorityVal) {
+        return res.status(403).json({
+          success: false,
+          message: `Cannot request override: Existing event "${conflictBooking.eventTitle}" has higher priority (${conflictBooking.priority}).`
+        });
+      }
+
+      if (!overrideRequested) {
+        return res.status(409).json({
+          success: false,
+          conflict: true,
+          message: "Hall already booked. Do you want to request override?"
+        });
+      }
     }
 
     if (!capacity || capacity < 1 || capacity > 300) {
@@ -109,6 +126,8 @@ const createBooking = async (req, res) => {
       capacity: parseInt(capacity),
       startTime: startDateTime,
       endTime: endDateTime,
+      priority: priority || "Normal",
+      eventType: eventType || "Academic",
       status: "pending",
       isConflict: Boolean(conflictBooking),
       conflictReason: conflictBooking ? conflictReason : "",
@@ -248,8 +267,25 @@ const approveBooking = async (req, res) => {
         return res.status(409).json({
           success: false,
           status: "rejected",
-          message: "Hall is no longer available for this time slot"
+          message: "Hall is no longer available for this time slot (Conflict with another approved booking)"
         });
+      }
+    }
+
+    // Double check priority for override requests
+    if (booking.isConflict && booking.overriddenBooking) {
+      const existingBooking = await Booking.findById(booking.overriddenBooking);
+      if (existingBooking && existingBooking.status === "approved") {
+        const priorityOrder = { "Normal": 0, "High": 1, "Critical": 2 };
+        const newPriorityVal = priorityOrder[booking.priority || "Normal"] || 0;
+        const existingPriorityVal = priorityOrder[existingBooking.priority || "Normal"] || 0;
+
+        if (newPriorityVal < existingPriorityVal) {
+          return res.status(403).json({
+            success: false,
+            message: `Approval failed: New event priority (${booking.priority}) is lower than existing event priority (${existingBooking.priority}).`
+          });
+        }
       }
     }
 
@@ -273,7 +309,7 @@ const approveBooking = async (req, res) => {
           "BOOKING_OVERRIDE",
           "Booking",
           booking.overriddenBooking,
-          `Overrode previous booking due to approval of ${booking.eventTitle}`
+          `Overrode booking (${booking.overriddenBooking}) with higher priority event: ${booking.eventTitle} (${booking.priority})`
         );
       } catch (overrideError) {
         console.error("Error processing override:", overrideError);
@@ -362,6 +398,96 @@ const rejectBooking = async (req, res) => {
   }
 };
 
+// POST /api/bookings/recommend
+// Recommend rooms based on criteria + booking frequency scoring
+const recommendRooms = async (req, res) => {
+  try {
+    const { date, startTime, endTime, attendees, limit } = req.body;
+
+    if (!date || !startTime || !endTime || !attendees) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    const startDateTime = new Date(`${date}T${startTime}`);
+    const endDateTime = new Date(`${date}T${endTime}`);
+    const requiredCapacity = parseInt(attendees);
+
+    // Determine how many rooms to return
+    let roomLimit = 5; // default top 5
+    if (limit === 'all') roomLimit = 999;
+    else if (limit === 10) roomLimit = 10;
+    else if (limit === 5) roomLimit = 5;
+    else if (parseInt(limit) > 0) roomLimit = parseInt(limit);
+
+    // 1. Find rooms with sufficient capacity
+    const eligibleRooms = await Room.find({
+      capacity: { $gte: requiredCapacity },
+      isActive: true
+    }).sort({ capacity: 1 }); // Sort by capacity asc (best fit first)
+
+    if (eligibleRooms.length === 0) {
+      return res.status(200).json({
+        rooms: [],
+        aiMessage: `No rooms found with capacity for ${requiredCapacity} people. Try reducing the number of attendees or contact admin to add more rooms.`
+      });
+    }
+
+    // 2. Check for time conflicts and get booking frequency (last 90 days)
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+    const availableRooms = [];
+    for (const room of eligibleRooms) {
+      const conflict = await Booking.findOne({
+        hall: room.name,
+        status: { $in: ["approved", "pending"] },
+        startTime: { $lt: endDateTime },
+        endTime: { $gt: startDateTime }
+      });
+
+      if (!conflict) {
+        // Count past bookings for this room (lower = less used = should be prioritized)
+        const bookingCount = await Booking.countDocuments({
+          hall: room.name,
+          status: { $in: ["approved", "pending"] },
+          createdAt: { $gte: ninetyDaysAgo }
+        });
+
+        const capacityWaste = room.capacity - requiredCapacity; // lower = better fit
+
+        availableRooms.push({
+          ...room.toObject(),
+          bookingCount,
+          capacityWaste,
+          // Score: lower is better. Prioritize least-booked, then best capacity fit
+          score: (bookingCount * 10) + capacityWaste
+        });
+      }
+    }
+
+    // Sort by score (least booked + best fit first)
+    availableRooms.sort((a, b) => a.score - b.score);
+
+    // Apply limit
+    const finalRooms = availableRooms.slice(0, roomLimit);
+
+    let aiMessage;
+    if (finalRooms.length === 0) {
+      aiMessage = `All rooms with capacity for ${requiredCapacity}+ people are booked during ${startTime}–${endTime} on ${date}. Try a different time slot.`;
+    } else {
+      const topRoom = finalRooms[0];
+      aiMessage = `Found ${availableRooms.length} available room${availableRooms.length !== 1 ? 's' : ''} for ${requiredCapacity} people. ` +
+        `Showing top ${finalRooms.length} recommendation${finalRooms.length !== 1 ? 's' : ''} sorted by least-used and best capacity fit. ` +
+        `"${topRoom.name}" (capacity: ${topRoom.capacity}) is the top pick with only ${topRoom.bookingCount} recent booking${topRoom.bookingCount !== 1 ? 's' : ''}.`;
+    }
+
+    res.status(200).json({ rooms: finalRooms, aiMessage, totalAvailable: availableRooms.length });
+  } catch (error) {
+    console.error("Error recommending rooms:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 module.exports = {
   createBooking,
   getMyBookings,
@@ -369,5 +495,6 @@ module.exports = {
   getPendingBookings,
   getAllBookings,
   approveBooking,
-  rejectBooking
+  rejectBooking,
+  recommendRooms
 };

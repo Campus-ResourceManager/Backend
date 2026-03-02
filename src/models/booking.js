@@ -18,7 +18,8 @@ const bookingSchema = new mongoose.Schema(
     },
     facultyDesignation: {
       type: String,
-      trim: true },
+      trim: true
+    },
     facultyEmail: {
       type: String,
       trim: true
@@ -72,6 +73,16 @@ const bookingSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Booking",
       default: null
+    },
+    priority: {
+      type: String,
+      enum: ["Normal", "High", "Critical"],
+      default: "Normal"
+    },
+    eventType: {
+      type: String,
+      enum: ["Academic", "Internal", "Official", "External", "Other"],
+      default: "Academic"
     }
 
   },
@@ -82,6 +93,7 @@ const bookingSchema = new mongoose.Schema(
 
 // Simple index to speed up availability checks per hall and time window
 bookingSchema.index({ hall: 1, startTime: 1, endTime: 1 });
+bookingSchema.index({ startTime: 1, endTime: 1, status: 1 }); // Compound index for conflict checks
 
 module.exports = mongoose.model("Booking", bookingSchema);
 

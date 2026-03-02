@@ -6,7 +6,8 @@ const {
   getPendingBookings,
   getAllBookings,
   approveBooking,
-  rejectBooking
+  rejectBooking,
+  recommendRooms
 } = require("../controllers/bookingController");
 const requireAuth = require("../middlewares/requireAuth");
 const requireRole = require("../middlewares/requireRole");
@@ -17,6 +18,7 @@ const router = express.Router();
 router.post("/", requireAuth, requireRole("coordinator"), createBooking);
 router.get("/my", requireAuth, requireRole("coordinator"), getMyBookings);
 router.get("/availability", requireAuth, requireRole("coordinator"), getAvailability);
+router.post("/recommend", requireAuth, requireRole("coordinator"), recommendRooms);
 
 // Admin views and manages bookings
 router.get("/pending", requireAuth, requireRole("admin"), getPendingBookings);

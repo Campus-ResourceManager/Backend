@@ -4,21 +4,31 @@
   "description": "Backend Part for Campus resource management",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest --detectOpenHandles",
     "start": "node src/server.js",
     "dev": "nodemon src/server.js"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@google/genai": "^1.43.0",
     "bcrypt": "^6.0.0",
     "connect-mongo": "^4.6.0",
     "cors": "^2.8.6",
-    "dotenv": "^17.2.3",
+    "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "express-session": "^1.19.0",
     "mongoose": "^9.1.5",
+    "node-cron": "^4.2.1",
     "nodemailer": "^7.0.12",
     "nodemon": "^3.1.11"
+  },
+  "devDependencies": {
+    "cross-env": "^10.1.0",
+    "jest": "^30.2.0",
+    "supertest": "^7.2.2"
+  },
+  "overrides": {
+    "fast-xml-parser": ">=5.3.8"
   }
 }
