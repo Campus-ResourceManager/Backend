@@ -6,7 +6,7 @@ const cors = require("cors");
 const authRoutes = require("./routes/auth.js");
 const bookingRoutes = require("./routes/booking.js");
 const resourceRoutes = require("./routes/resource");
-
+const reallocationRoutes = require("./routes/reallocationRoutes");
 
 const app = express();
 const port = process.env.PORT;
@@ -32,6 +32,7 @@ app.use(
 app.use("/api/auth", authRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/resources", resourceRoutes);
+app.use("/api/reallocation", reallocationRoutes);
 
 app.get("/", (req, res) => {
   res.send("backend running");

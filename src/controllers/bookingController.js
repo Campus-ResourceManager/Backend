@@ -274,6 +274,7 @@ const approveBooking = async (req, res) => {
 
       return res.status(200).json({
         success: true,
+        type: "reallocation",
         message: "Booking approved. Reallocation required.",
         suggestions,
         displacedBooking
