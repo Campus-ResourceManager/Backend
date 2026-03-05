@@ -1,5 +1,6 @@
 const Booking = require("../models/booking");
 const Resource = require("../models/resource");
+const { findAlternativeHalls } = require("../services/reallocationEngine");
 
 /* ============================================================
    Helper: Check overlapping bookings for a resource
@@ -255,15 +256,28 @@ const approveBooking = async (req, res) => {
       }
     }
 
-    // 🔥 If override → reject old booking
     if (booking.isConflict && booking.overriddenBooking) {
-      await Booking.findByIdAndUpdate(
-        booking.overriddenBooking,
-        {
-          status: "rejected",
-          rejectionReason: "Overridden by admin approval"
-        }
-      );
+
+      const displacedBooking = await Booking
+        .findById(booking.overriddenBooking)
+        .populate("resource");
+
+      // 🔹 Run smart reallocation
+      const suggestions = await findAlternativeHalls(displacedBooking);
+
+      // mark displaced booking
+      displacedBooking.status = "reallocation_pending";
+      await displacedBooking.save();
+
+      booking.status = "approved";
+      await booking.save();
+
+      return res.status(200).json({
+        success: true,
+        message: "Booking approved. Reallocation required.",
+        suggestions,
+        displacedBooking
+      });
     }
 
     booking.status = "approved";
