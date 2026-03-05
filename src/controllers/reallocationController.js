@@ -83,3 +83,9 @@ const rejectSuggestion = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+module.exports = {
+  sendSuggestion,
+  acceptSuggestion,
+  rejectSuggestion
+};
