@@ -50,14 +50,14 @@ const createBooking = async (req, res) => {
     if (
       !facultyName ||
       !eventTitle ||
-      (!resourceId && !req.body.hall) ||
+      !resourceId ||
       !date ||
       !startTime ||
       !endTime
     ) {
       return res.status(400).json({
         message:
-          "facultyName, eventTitle, resourceId (or hall name), date, startTime and endTime are required"
+          "facultyName, eventTitle, resourceId, date, startTime and endTime are required"
       });
     }
 
@@ -77,6 +77,7 @@ const createBooking = async (req, res) => {
     }
 
     const now = new Date();
+
     if (endDateTime < now) {
       return res.status(400).json({
         success: false,
@@ -84,25 +85,18 @@ const createBooking = async (req, res) => {
       });
     }
 
-    // 🔥 Validate resource exists
-    let resource;
-    if (resourceId) {
-      resource = await Resource.findById(resourceId);
-    } else if (req.body.hall) {
-      resource = await Resource.findOne({ name: req.body.hall, isActive: true });
-    }
+    // 🔹 Validate resource exists
+    const resource = await Resource.findById(resourceId);
 
-    if (!resource) {
+    if (!resource || !resource.isActive) {
       return res.status(404).json({
-        message: "Resource not found"
+        message: "Resource not found or inactive"
       });
     }
 
-    const finalResourceId = resource._id;
-
-    // 🔥 Check conflict
+    // 🔹 Check for existing approved booking conflict
     const conflictBooking = await Booking.findOne({
-      resource: finalResourceId,
+      resource: resourceId,
       status: "approved",
       startTime: { $lt: endDateTime },
       endTime: { $gt: startDateTime }
@@ -116,8 +110,9 @@ const createBooking = async (req, res) => {
       });
     }
 
-    // 🔥 Check faculty credits & apply fairness penalty if needed
+    // 🔹 Ensure faculty profile exists
     let profile = await FacultyProfile.findOne({ email: facultyEmail });
+
     if (!profile) {
       profile = await FacultyProfile.create({
         email: facultyEmail,
@@ -126,9 +121,17 @@ const createBooking = async (req, res) => {
       });
     }
 
-    // Calculate used credits this month
+    // 🔹 Calculate used credits this month
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const endOfMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999
+    );
 
     const monthlyBookings = await Booking.find({
       facultyEmail,
@@ -137,19 +140,19 @@ const createBooking = async (req, res) => {
     }).populate("resource");
 
     let usedCredits = 0;
+
     for (const b of monthlyBookings) {
       if (b.resource && b.resource.creditCost) {
         usedCredits += b.resource.creditCost;
       }
     }
 
-    const proposedCost = resource.creditCost || 1;
-    // Note: We no longer apply the penalty here at request time.
-    // It will be applied in approveBooking when the administrator confirms it.
+    const proposedCost = resource.creditCost ?? 1;
 
+    // 🔹 Create booking
     const booking = await Booking.create({
       coordinator: req.session.user.userId,
-      resource: finalResourceId,
+      resource: resourceId,
       facultyName,
       facultyDepartment,
       facultyDesignation,
@@ -160,8 +163,8 @@ const createBooking = async (req, res) => {
       endTime: endDateTime,
       status: "pending",
       priorityScoreAtBooking: profile.priorityScore,
-      isConflict: overrideRequested || false,
-      conflictReason: conflictReason || "",
+      isConflict: Boolean(conflictBooking && overrideRequested),
+      conflictReason: conflictBooking ? conflictReason : "",
       overriddenBooking: conflictBooking ? conflictBooking._id : null
     });
 
@@ -303,22 +306,15 @@ const approveBooking = async (req, res) => {
         .findById(booking.overriddenBooking)
         .populate("resource");
 
-      // 🔹 Run smart reallocation
       const suggestions = await findAlternativeHalls(displacedBooking);
-
-      // mark displaced booking
-      displacedBooking.status = "reallocation_pending";
-      await displacedBooking.save();
-
-      booking.status = "approved";
-      await booking.save();
 
       return res.status(200).json({
         success: true,
         type: "reallocation",
-        message: "Booking approved. Reallocation required.",
+        message: "Conflict detected. Admin confirmation required.",
         suggestions,
-        displacedBooking
+        displacedBooking,
+        bookingToApprove: booking._id
       });
     }
 
