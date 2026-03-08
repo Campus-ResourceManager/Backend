@@ -1,17 +1,27 @@
+/**
+ * Reallocation Controller
+ * 
+ * Manages the process of suggesting and accepting alternative halls for users
+ * whose original bookings were displaced by a higher-priority override.
+ */
+
 const ReallocationRequest = require("../models/reallocationRequest");
 const Booking = require("../models/booking");
 
+/**
+ * POST /api/reallocation/suggest
+ * Sends a reallocation suggestion to a coordinator for a displaced booking.
+ */
 const sendSuggestion = async (req, res) => {
   try {
-
     const { bookingId, hallId } = req.body;
 
     const booking = await Booking.findById(bookingId);
-
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
     }
 
+    // Create a record for the suggestion so the coordinator can review it
     const request = await ReallocationRequest.create({
       displacedBooking: bookingId,
       coordinator: booking.coordinator,
@@ -25,27 +35,34 @@ const sendSuggestion = async (req, res) => {
     });
 
   } catch (error) {
-    console.error(error);
+    console.error("Send Suggestion Error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
 
+/**
+ * PATCH /api/reallocation/:id/accept
+ * Executed by a coordinator to accept a suggested alternative hall.
+ */
 const acceptSuggestion = async (req, res) => {
   try {
-
     const { id } = req.params;
 
     const request = await ReallocationRequest
       .findById(id)
       .populate("displacedBooking");
 
-    const booking = await Booking.findById(request.displacedBooking);
+    if (!request) {
+      return res.status(404).json({ message: "Reallocation request not found" });
+    }
 
+    // Update the original booking with the new resource and mark it as approved
+    const booking = await Booking.findById(request.displacedBooking);
     booking.resource = request.suggestedHall;
     booking.status = "approved";
-
     await booking.save();
 
+    // Mark the suggestion request as accepted
     request.status = "accepted";
     await request.save();
 
@@ -56,14 +73,17 @@ const acceptSuggestion = async (req, res) => {
     });
 
   } catch (error) {
-    console.error(error);
+    console.error("Accept Suggestion Error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
 
+/**
+ * PATCH /api/reallocation/:id/reject
+ * Executed by a coordinator to reject a suggested alternative.
+ */
 const rejectSuggestion = async (req, res) => {
   try {
-
     const { id } = req.params;
 
     const request = await ReallocationRequest.findByIdAndUpdate(
@@ -79,11 +99,15 @@ const rejectSuggestion = async (req, res) => {
     });
 
   } catch (error) {
-    console.error(error);
+    console.error("Reject Suggestion Error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
 
+/**
+ * GET /api/reallocation/my
+ * Retrieves all pending reallocation suggestions for the logged-in coordinator.
+ */
 const getMyReallocationRequests = async (req, res) => {
   try {
     const requests = await ReallocationRequest
@@ -101,7 +125,7 @@ const getMyReallocationRequests = async (req, res) => {
     res.json(requests);
 
   } catch (error) {
-    console.error(error);
+    console.error("Get My Reallocations Error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };

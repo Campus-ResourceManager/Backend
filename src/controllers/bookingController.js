@@ -1,11 +1,27 @@
+/**
+ * Booking Management Controller
+ * 
+ * This is the core logic engine of the application. It handles:
+ * 1. Creating booking requests with conflict detection.
+ * 2. Approving/Rejecting bookings with fairness scoring and penalties.
+ * 3. Smart reallocation of displaced bookings.
+ * 4. Availability lookups and profile management.
+ */
+
 const Booking = require("../models/booking");
 const Resource = require("../models/resource");
 const { findAlternativeHalls } = require("../services/reallocationEngine");
 const FacultyProfile = require("../models/facultyProfile");
 
-/* ============================================================
-   Helper: Check overlapping bookings for a resource
-   ============================================================ */
+/**
+ * Helper: Check overlapping bookings for a specific resource
+ * 
+ * @param {string} resourceId - The ID of the hall or classroom
+ * @param {Date} startTime - Start of the requested window
+ * @param {Date} endTime - End of the requested window
+ * @param {string} [excludeBookingId] - Optional ID to ignore (for updates)
+ * @returns {Promise<boolean>} - True if a conflict exists
+ */
 const hasConflictForResource = async (
   resourceId,
   startTime,
@@ -14,7 +30,9 @@ const hasConflictForResource = async (
 ) => {
   const query = {
     resource: resourceId,
+    // Only 'pending' or 'approved' bookings count as conflicts
     status: { $in: ["pending", "approved"] },
+    // Time overlap logic: (StartA < EndB) AND (EndA > StartB)
     startTime: { $lt: endTime },
     endTime: { $gt: startTime }
   };
@@ -26,10 +44,10 @@ const hasConflictForResource = async (
   return Booking.exists(query);
 };
 
-/* ============================================================
-   POST /api/bookings
-   Create Booking
-   ============================================================ */
+/**
+ * POST /api/bookings
+ * Create a new booking request.
+ */
 const createBooking = async (req, res) => {
   try {
     const {
@@ -43,10 +61,11 @@ const createBooking = async (req, res) => {
       date,
       startTime,
       endTime,
-      overrideRequested,
+      overrideRequested, // If true, user is aware of a conflict and requesting an override
       conflictReason
     } = req.body;
 
+    // Basic required field validation
     if (
       !facultyName ||
       !eventTitle ||
@@ -61,6 +80,7 @@ const createBooking = async (req, res) => {
       });
     }
 
+    // Parse date/time strings into JS Date objects
     const startDateTime = new Date(`${date}T${startTime}`);
     const endDateTime = new Date(`${date}T${endTime}`);
 
@@ -76,6 +96,7 @@ const createBooking = async (req, res) => {
       });
     }
 
+    // Prevent bookings in the past
     const now = new Date();
 
     if (endDateTime < now) {
@@ -102,6 +123,7 @@ const createBooking = async (req, res) => {
       endTime: { $gt: startDateTime }
     });
 
+    // If a conflict exists and override wasn't explicitly requested, notify user
     if (conflictBooking && !overrideRequested) {
       return res.status(409).json({
         success: false,
@@ -162,6 +184,7 @@ const createBooking = async (req, res) => {
       startTime: startDateTime,
       endTime: endDateTime,
       status: "pending",
+      // Capture a snapshot of the priority score at the time of request
       priorityScoreAtBooking: profile.priorityScore,
       isConflict: Boolean(conflictBooking && overrideRequested),
       conflictReason: conflictBooking ? conflictReason : "",
@@ -176,16 +199,17 @@ const createBooking = async (req, res) => {
     });
 
   } catch (error) {
-    console.error(error);
+    console.error("Create Booking Error:", error);
     return res.status(500).json({
       message: "Server error"
     });
   }
 };
 
-/* ============================================================
-   GET /api/bookings/my
-   ============================================================ */
+/**
+ * GET /api/bookings/my
+ * Returns all bookings created by the currently logged-in coordinator.
+ */
 const getMyBookings = async (req, res) => {
   try {
     const bookings = await Booking.find({
@@ -197,16 +221,17 @@ const getMyBookings = async (req, res) => {
 
     return res.status(200).json(bookings);
   } catch (error) {
-    console.error(error);
+    console.error("Get My Bookings Error:", error);
     return res.status(500).json({
       message: "Server error"
     });
   }
 };
 
-/* ============================================================
-   GET /api/bookings/availability
-   ============================================================ */
+/**
+ * GET /api/bookings/availability
+ * Returns all active bookings to visualize on a calendar/grid.
+ */
 const getAvailability = async (req, res) => {
   try {
     const bookings = await Booking.find({
@@ -219,16 +244,17 @@ const getAvailability = async (req, res) => {
 
     return res.status(200).json(bookings);
   } catch (error) {
-    console.error(error);
+    console.error("Get Availability Error:", error);
     return res.status(500).json({
       message: "Server error"
     });
   }
 };
 
-/* ============================================================
-   GET /api/bookings/pending
-   ============================================================ */
+/**
+ * GET /api/bookings/pending
+ * [Admin only] Returns all pending booking requests for review.
+ */
 const getPendingBookings = async (req, res) => {
   try {
     const bookings = await Booking.find({ status: "pending" })
@@ -239,16 +265,17 @@ const getPendingBookings = async (req, res) => {
 
     return res.status(200).json(bookings);
   } catch (error) {
-    console.error(error);
+    console.error("Get Pending Error:", error);
     return res.status(500).json({
       message: "Server error"
     });
   }
 };
 
-/* ============================================================
-   GET /api/bookings
-   ============================================================ */
+/**
+ * GET /api/bookings
+ * [Admin only] Returns all bookings in history.
+ */
 const getAllBookings = async (req, res) => {
   try {
     const bookings = await Booking.find()
@@ -259,16 +286,17 @@ const getAllBookings = async (req, res) => {
 
     return res.status(200).json(bookings);
   } catch (error) {
-    console.error(error);
+    console.error("Get All Bookings Error:", error);
     return res.status(500).json({
       message: "Server error"
     });
   }
 };
 
-/* ============================================================
-   PATCH /api/bookings/:id/approve
-   ============================================================ */
+/**
+ * PATCH /api/bookings/:id/approve
+ * [Admin only] Approves a booking request and handles fairness penalties.
+ */
 const approveBooking = async (req, res) => {
   try {
     const { id } = req.params;
@@ -283,7 +311,7 @@ const approveBooking = async (req, res) => {
       return res.status(400).json({ message: "Booking is already approved" });
     }
 
-    // 🔥 If NOT override → recheck conflict
+    // Re-verify availability if this wasn't an intentional override request
     if (!booking.isConflict) {
       const conflict = await hasConflictForResource(
         booking.resource,
@@ -300,8 +328,8 @@ const approveBooking = async (req, res) => {
       }
     }
 
+    // Handle Override Reallocation Logic
     if (booking.isConflict && booking.overriddenBooking) {
-
       const displacedBooking = await Booking
         .findById(booking.overriddenBooking)
         .populate("resource");
@@ -318,7 +346,12 @@ const approveBooking = async (req, res) => {
       });
     }
 
-    // 🔥 Apply fairness penalty on approval if quota is exceeded
+    /**
+     * Fairness & Penalty Logic
+     * 
+     * We calculate the total credits used by this faculty member this month.
+     * If approving this booking puts them over their quota, we deduct priority points.
+     */
     const facultyEmail = booking.facultyEmail;
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -326,9 +359,10 @@ const approveBooking = async (req, res) => {
 
     let profile = await FacultyProfile.findOne({ email: facultyEmail });
     if (profile) {
+      // Fetch all other approved bookings for this faculty this month
       const monthlyBookings = await Booking.find({
         facultyEmail,
-        status: "approved", // Only count already approved ones for the final check
+        status: "approved",
         _id: { $ne: booking._id },
         startTime: { $gte: startOfMonth, $lte: endOfMonth }
       }).populate("resource");
@@ -343,18 +377,23 @@ const approveBooking = async (req, res) => {
       await booking.populate("resource");
       const proposedCost = booking.resource?.creditCost || 1;
 
+      // Check if total usage exceeds the allowed quota (typically 20)
       if (usedCredits + proposedCost > profile.monthlyQuota) {
         const excess = (usedCredits + proposedCost) - profile.monthlyQuota;
+
+        // Dynamic Penalty calculation: Base 10 + 5 for every 5 units of excess
         const penaltyAmount = 10 + Math.floor(excess / 5) * 5;
 
+        // Apply penalty and ensure score never drops below 0
         profile.priorityScore = Math.max(0, profile.priorityScore - penaltyAmount);
         await profile.save();
 
-        // Update the snapshot for this specific booking to reflect the final score
+        // Update the snapshot for this specific booking
         booking.priorityScoreAtBooking = profile.priorityScore;
       }
     }
 
+    // Finalize approval
     booking.status = "approved";
     booking.rejectionReason = "";
     await booking.save();
@@ -367,16 +406,17 @@ const approveBooking = async (req, res) => {
     });
 
   } catch (error) {
-    console.error(error);
+    console.error("Approve Booking Error:", error);
     return res.status(500).json({
       message: "Server error"
     });
   }
 };
 
-/* ============================================================
-   PATCH /api/bookings/:id/reject
-   ============================================================ */
+/**
+ * PATCH /api/bookings/:id/reject
+ * [Admin only] Rejects a booking request with a reason.
+ */
 const rejectBooking = async (req, res) => {
   try {
     const { id } = req.params;
@@ -403,17 +443,17 @@ const rejectBooking = async (req, res) => {
     });
 
   } catch (error) {
-    console.error(error);
+    console.error("Reject Booking Error:", error);
     return res.status(500).json({
       message: "Server error"
     });
   }
 };
 
-/* ============================================================
-   GET /api/bookings/faculty/:email
-   Retrieve faculty profile and current month's credit usage
-   ============================================================ */
+/**
+ * GET /api/bookings/faculty/:email
+ * Retrieves faculty profile and calculates real-time credit usage for the month.
+ */
 const getFacultyProfile = async (req, res) => {
   try {
     const { email } = req.params;
@@ -424,8 +464,7 @@ const getFacultyProfile = async (req, res) => {
 
     let profile = await FacultyProfile.findOne({ email });
 
-    // If no profile found, we'll return a basic one with default values
-    // as it will be created on first booking anyway
+    // Return defaults if profile doesn't exist yet
     if (!profile) {
       return res.status(200).json({
         email,
@@ -437,7 +476,7 @@ const getFacultyProfile = async (req, res) => {
       });
     }
 
-    // Calculate used credits this month
+    // Sum up credits for all pending/approved bookings this month
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
@@ -461,38 +500,36 @@ const getFacultyProfile = async (req, res) => {
     });
 
   } catch (error) {
-    console.error(error);
+    console.error("Get Faculty Profile Error:", error);
     return res.status(500).json({ message: "Server error" });
   }
 };
 
-/* ============================================================
-   GET /api/bookings/fairness-stats
-   Retrieve top faculty by credit usage and lowest priority scores
-   ============================================================ */
+/**
+ * GET /api/bookings/fairness-stats
+ * Returns lists of faculty for monitoring fairness and priority scores.
+ */
 const getFairnessStats = async (req, res) => {
   try {
+    // Note: 'usedCredits' is virtual/calculated, so we sort by priorityScore primarily
     const topFaculty = await FacultyProfile.find()
-      .sort({ usedCredits: -1 })
+      .sort({ updatedAt: -1 })
       .limit(5)
       .lean();
 
+    // Find the faculty with the lowest priority scores (most penalized)
     const lowPriority = await FacultyProfile.find()
       .sort({ priorityScore: 1 })
       .limit(5)
       .lean();
 
-    // Since usedCredits is calculated on the fly in getFacultyProfile, 
-    // we might need to calculate it here too for the list or store it in DB.
-    // For now, let's fetch all and calculate for simplicity (if faculty count is small)
-    // or just return priority scores which are stored.
-
     return res.status(200).json({
       lowPriority,
+      topFaculty,
       msg: "System fairness statistics retrieved"
     });
   } catch (error) {
-    console.error(error);
+    console.error("Get Fairness Stats Error:", error);
     return res.status(500).json({ message: "Server error" });
   }
 };

@@ -1,3 +1,9 @@
+/**
+ * Reallocation Routes
+ * 
+ * Handles the workflow for managing displaced bookings after an override.
+ */
+
 const express = require("express");
 
 const {
@@ -12,6 +18,9 @@ const requireRole = require("../middlewares/requireRole");
 
 const router = express.Router();
 
+/**
+ * Admin Action: Initiate a suggestion for a user who was bumped.
+ */
 router.post(
   "/send",
   requireAuth,
@@ -19,6 +28,11 @@ router.post(
   sendSuggestion
 );
 
+/**
+ * Coordinator Actions: Review and react to suggestions for their bookings.
+ */
+
+// Confirm and move to the suggested hall
 router.patch(
   "/accept/:id",
   requireAuth,
@@ -26,6 +40,7 @@ router.patch(
   acceptSuggestion
 );
 
+// Decline the suggestion
 router.patch(
   "/reject/:id",
   requireAuth,
@@ -33,6 +48,7 @@ router.patch(
   rejectSuggestion
 );
 
+// View pending suggestions
 router.get(
   "/my",
   requireAuth,
