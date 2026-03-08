@@ -1,0 +1,12 @@
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+Mongo DB connection failed MongooseError: The `uri` parameter to `openUri()` must be a string, got "undefined". Make sure the first parameter to `mongoose.connect()` or `mongoose.createConnection()` is a string.
+    at NativeConnection.createClient (C:\Users\sandheep\OneDrive\Desktop\Full Stack\SWE CampusResourceManager\Backend\node_modules\mongoose\lib\drivers\node-mongodb-native\connection.js:230:11)
+    at NativeConnection.openUri (C:\Users\sandheep\OneDrive\Desktop\Full Stack\SWE CampusResourceManager\Backend\node_modules\mongoose\lib\connection.js:1075:34)
+    at Mongoose.connect (C:\Users\sandheep\OneDrive\Desktop\Full Stack\SWE CampusResourceManager\Backend\node_modules\mongoose\lib\mongoose.js:451:15)
+    at Object.<anonymous> (C:\Users\sandheep\OneDrive\Desktop\Full Stack\SWE CampusResourceManager\Backend\src\server.js:41:4)
+    at Module._compile (node:internal/modules/cjs/loader:1565:14)
+    at Object..js (node:internal/modules/cjs/loader:1708:10)
+    at Module.load (node:internal/modules/cjs/loader:1318:32)
+    at Function._load (node:internal/modules/cjs/loader:1128:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:219:24)

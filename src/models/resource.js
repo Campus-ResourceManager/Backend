@@ -38,6 +38,11 @@ const resourceSchema = new mongoose.Schema(
     isActive: {
       type: Boolean,
       default: true
+    },
+
+    creditCost: {
+      type: Number,
+      default: 1
     }
   },
   { timestamps: true }

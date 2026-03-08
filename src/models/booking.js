@@ -18,7 +18,8 @@ const bookingSchema = new mongoose.Schema(
     },
     facultyDesignation: {
       type: String,
-      trim: true },
+      trim: true
+    },
     facultyEmail: {
       type: String,
       trim: true
@@ -71,6 +72,10 @@ const bookingSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Booking",
       default: null
+    },
+    priorityScoreAtBooking: {
+      type: Number,
+      default: 100
     }
 
   },

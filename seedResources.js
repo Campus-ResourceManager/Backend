@@ -15,13 +15,13 @@ async function seedResources() {
 
     // 🔹 Insert Halls
     await Resource.insertMany([
-      { name: "Anugraha Hall", type: "hall", capacity: 100 },
-      { name: "Sandheepani Hall", type: "hall", capacity: 100 },
-      { name: "Amriteshwari Hall", type: "hall", capacity: 100 },
-      { name: "Sudhamani Hall", type: "hall", capacity: 100 },
-      { name: "Seminar Hall", type: "hall", capacity: 60 },
-      { name: "Auditorium/Pandal", type: "hall", capacity: 400 },
-      { name: "Conference Hall", type: "hall", capacity: 60 }
+      { name: "Anugraha Hall", type: "hall", capacity: 100, creditCost: 5 },
+      { name: "Sandheepani Hall", type: "hall", capacity: 100, creditCost: 5 },
+      { name: "Amriteshwari Hall", type: "hall", capacity: 100, creditCost: 5 },
+      { name: "Sudhamani Hall", type: "hall", capacity: 100, creditCost: 5 },
+      { name: "Seminar Hall", type: "hall", capacity: 60, creditCost: 5 },
+      { name: "Auditorium/Pandal", type: "hall", capacity: 400, creditCost: 5 },
+      { name: "Conference Hall", type: "hall", capacity: 60, creditCost: 5 }
     ]);
 
     console.log("🏢 Halls inserted");
@@ -48,7 +48,8 @@ async function seedResources() {
               block,
               wing,
               floor,
-              capacity: wing === "A" || wing === "B" ? 60 : 75
+              capacity: wing === "A" || wing === "B" ? 60 : 75,
+              creditCost: 1 // Default cost for classrooms
             });
           }
         }
