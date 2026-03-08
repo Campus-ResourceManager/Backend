@@ -1,7 +1,14 @@
+/**
+ * Resource Model
+ * 
+ * Represents a physical asset that can be booked (Halls, Classrooms).
+ */
+
 const mongoose = require("mongoose");
 
 const resourceSchema = new mongoose.Schema(
   {
+    // Unique display name (e.g., 'Main Auditorium')
     name: {
       type: String,
       required: true,
@@ -14,9 +21,10 @@ const resourceSchema = new mongoose.Schema(
       required: true
     },
 
+    // Administrative hierarchy for campus organization
     block: {
       type: String,
-      default: null // only for classrooms
+      default: null
     },
 
     wing: {
@@ -35,11 +43,13 @@ const resourceSchema = new mongoose.Schema(
       required: true
     },
 
+    // Used to temporarily decommission a resource
     isActive: {
       type: Boolean,
       default: true
     },
 
+    // The 'cost' in credits to book this resource for a standard session
     creditCost: {
       type: Number,
       default: 1
