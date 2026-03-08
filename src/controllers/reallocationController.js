@@ -84,8 +84,31 @@ const rejectSuggestion = async (req, res) => {
   }
 };
 
+const getMyReallocationRequests = async (req, res) => {
+  try {
+    const requests = await ReallocationRequest
+      .find({
+        coordinator: req.session.user.userId,
+        status: "pending"
+      })
+      .populate({
+        path: "displacedBooking",
+        populate: { path: "resource" }
+      })
+      .populate("suggestedHall")
+      .sort({ createdAt: -1 });
+
+    res.json(requests);
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 module.exports = {
   sendSuggestion,
   acceptSuggestion,
-  rejectSuggestion
+  rejectSuggestion,
+  getMyReallocationRequests
 };

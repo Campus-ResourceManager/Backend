@@ -3,7 +3,8 @@ const express = require("express");
 const {
   sendSuggestion,
   acceptSuggestion,
-  rejectSuggestion
+  rejectSuggestion,
+  getMyReallocationRequests
 } = require("../controllers/reallocationController");
 
 const requireAuth = require("../middlewares/requireAuth");
@@ -30,6 +31,13 @@ router.patch(
   requireAuth,
   requireRole("coordinator"),
   rejectSuggestion
+);
+
+router.get(
+  "/my",
+  requireAuth,
+  requireRole("coordinator"),
+  getMyReallocationRequests
 );
 
 module.exports = router;
